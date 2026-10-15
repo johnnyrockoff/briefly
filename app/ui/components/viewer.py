@@ -1,9 +1,10 @@
-import subprocess
+from datetime import datetime
 from pathlib import Path
+import subprocess
 from typing import Optional
 
 import markdown
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -17,11 +18,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.config import SUMMARIES_DIR, TRANSCRIPTS_DIR
+from app.config import RECORDINGS_DIR, SUMMARIES_DIR, TRANSCRIPTS_DIR
 from app.ui.styles import MARKDOWN_HTML_STYLE
 
 
 class MeetingViewer(QWidget):
+    transcribe_requested = Signal(str)  # wav_path
+    summarize_requested = Signal(str)   # txt_path
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.current_stem: Optional[str] = None
@@ -32,54 +36,73 @@ class MeetingViewer(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
 
-        # Header com título da reunião selecionada e botões de ação
+        # Header with selected meeting title and actions
         header = QHBoxLayout()
-        self.lbl_title = QLabel("Select a meeting to view the summary")
-        self.lbl_title.setStyleSheet("font-weight: bold; font-size: 15px; color: #89b4fa;")
+        header.setSpacing(8)
+
+        self.lbl_title = QLabel("Select a meeting to view details")
+        self.lbl_title.setStyleSheet("font-weight: 700; font-size: 15px; color: #8aadf4;")
         header.addWidget(self.lbl_title)
         header.addStretch()
 
-        self.btn_copy_markdown = QPushButton("📋 Copy Markdown")
+        # Action Buttons
+        self.btn_transcribe = QPushButton("🎙️ Transcribe")
+        self.btn_transcribe.setToolTip("Run speech-to-text with local Whisper")
+        self.btn_transcribe.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_transcribe.clicked.connect(self._on_transcribe_clicked)
+        self.btn_transcribe.setEnabled(False)
+        header.addWidget(self.btn_transcribe)
+
+        self.btn_summarize = QPushButton("✨ Summarize")
+        self.btn_summarize.setToolTip("Generate AI summary with local Ollama")
+        self.btn_summarize.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_summarize.clicked.connect(self._on_summarize_clicked)
+        self.btn_summarize.setEnabled(False)
+        header.addWidget(self.btn_summarize)
+
+        self.btn_copy_markdown = QPushButton("📋 Copy")
         self.btn_copy_markdown.setToolTip("Copy full markdown summary to clipboard")
+        self.btn_copy_markdown.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_copy_markdown.clicked.connect(self._copy_markdown)
         self.btn_copy_markdown.setEnabled(False)
         header.addWidget(self.btn_copy_markdown)
 
-        self.btn_open_external = QPushButton("↗ Open in Editor")
-        self.btn_open_external.setToolTip("Open .md file in Linux default editor (Gedit, VSCode, etc.)")
+        self.btn_open_external = QPushButton("↗ Open")
+        self.btn_open_external.setToolTip("Open markdown file in default text editor")
+        self.btn_open_external.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_open_external.clicked.connect(self._open_in_editor)
         self.btn_open_external.setEnabled(False)
         header.addWidget(self.btn_open_external)
 
         layout.addLayout(header)
 
-        # Barra de status / progresso
+        # Progress / Status Banner
         self.progress_bar = QProgressBar()
         self.progress_bar.setTextVisible(True)
-        self.progress_bar.setRange(0, 0)  # indeterminado por padrão
-        self.progress_bar.setFixedHeight(18)
+        self.progress_bar.setRange(0, 0)
+        self.progress_bar.setFixedHeight(16)
         self.progress_bar.hide()
         layout.addWidget(self.progress_bar)
 
         self.lbl_status = QLabel("")
-        self.lbl_status.setStyleSheet("color: #fab387; font-size: 12px;")
+        self.lbl_status.setStyleSheet("color: #fab387; font-size: 12px; font-weight: 500;")
         self.lbl_status.hide()
         layout.addWidget(self.lbl_status)
 
-        # Abas de visualização
+        # View Tabs
         self.tabs = QTabWidget()
 
-        # Aba 1: Resumo Formatado (HTML do Markdown)
+        # Tab 1: Formatted Summary (Markdown HTML)
         self.browser_summary = QTextBrowser()
         self.browser_summary.setOpenExternalLinks(True)
         self.tabs.addTab(self.browser_summary, "📋 Meeting Summary")
 
-        # Aba 2: Resumo em Markdown Puro (para edição rápida)
+        # Tab 2: Raw Markdown Editor
         self.edit_raw_markdown = QTextEdit()
         self.edit_raw_markdown.textChanged.connect(self._on_raw_markdown_edited)
         self.tabs.addTab(self.edit_raw_markdown, "✏️ Raw Markdown")
 
-        # Aba 3: Transcrição Completa
+        # Tab 3: Full Transcript
         self.browser_transcript = QTextBrowser()
         self.tabs.addTab(self.browser_transcript, "📝 Full Transcript")
 
@@ -87,51 +110,85 @@ class MeetingViewer(QWidget):
 
     def load_meeting(self, stem: str):
         self.current_stem = stem
-        display_name = stem.replace("reuniao_", "")
+
+        # Formatted title
+        raw_name = stem.replace("reuniao_", "")
+        display_name = raw_name
+        try:
+            dt = datetime.strptime(raw_name, "%Y-%m-%d_%H-%M-%S")
+            display_name = dt.strftime("%b %d, %Y · %H:%M:%S")
+        except Exception:
+            pass
         self.lbl_title.setText(f"Meeting: {display_name}")
 
+        wav_path = RECORDINGS_DIR / f"{stem}.wav"
         txt_path = TRANSCRIPTS_DIR / f"{stem}.txt"
         md_path = SUMMARIES_DIR / f"{stem}.md"
 
-        # Carregar transcrição
+        has_wav = wav_path.exists()
+        has_txt = txt_path.exists() and txt_path.stat().st_size > 0
+        has_md = md_path.exists() and md_path.stat().st_size > 0
+
+        self.btn_transcribe.setEnabled(has_wav)
+        self.btn_summarize.setEnabled(has_txt)
+        self.btn_copy_markdown.setEnabled(has_md)
+        self.btn_open_external.setEnabled(has_md)
+
+        # Load transcript
         if txt_path.exists():
             transcript_text = txt_path.read_text(encoding="utf-8").strip()
             self.browser_transcript.setPlainText(transcript_text if transcript_text else "(Empty transcript)")
         else:
-            self.browser_transcript.setPlainText("No transcript available for this recording. Click 'Transcribe'.")
+            if has_wav:
+                self.browser_transcript.setPlainText(
+                    "Audio recording is available, but not yet transcribed.\n"
+                    "Click '🎙️ Transcribe' above to run Whisper speech-to-text."
+                )
+            else:
+                self.browser_transcript.setPlainText("No audio or transcript available for this entry.")
 
-        # Carregar resumo
+        # Load summary
         if md_path.exists():
             md_content = md_path.read_text(encoding="utf-8").strip()
             self.edit_raw_markdown.blockSignals(True)
             self.edit_raw_markdown.setPlainText(md_content)
             self.edit_raw_markdown.blockSignals(False)
             self._render_markdown_html(md_content)
-            self.btn_copy_markdown.setEnabled(True)
-            self.btn_open_external.setEnabled(True)
         else:
             self.edit_raw_markdown.blockSignals(True)
             self.edit_raw_markdown.setPlainText("")
             self.edit_raw_markdown.blockSignals(False)
+            if has_txt:
+                hint = "Click <b>'✨ Summarize'</b> in the toolbar above to generate meeting notes with local AI."
+            elif has_wav:
+                hint = "First click <b>'🎙️ Transcribe'</b> to generate a transcript, then generate the summary."
+            else:
+                hint = "No audio or transcript found for this meeting."
+
             self.browser_summary.setHtml(
-                f"{MARKDOWN_HTML_STYLE}<p style='color: #a6adc8;'>No summary generated yet. "
-                "Click <b>'Summarize'</b> to process with local AI.</p>"
+                f"{MARKDOWN_HTML_STYLE}<div style='padding: 24px; text-align: center; color: #a5adcb;'>"
+                f"<h3 style='color: #8aadf4;'>No Summary Generated Yet</h3>"
+                f"<p>{hint}</p></div>"
             )
-            self.btn_copy_markdown.setEnabled(False)
-            self.btn_open_external.setEnabled(False)
 
     def set_processing_status(self, message: str, in_progress: bool = True):
         if in_progress:
             self.lbl_status.setText(f"⏳ {message}")
             self.lbl_status.show()
             self.progress_bar.show()
+            self.btn_transcribe.setEnabled(False)
+            self.btn_summarize.setEnabled(False)
         else:
             self.lbl_status.setText(f"✅ {message}")
             self.progress_bar.hide()
+            if self.current_stem:
+                self.load_meeting(self.current_stem)
 
     def hide_processing_status(self):
         self.lbl_status.hide()
         self.progress_bar.hide()
+        if self.current_stem:
+            self.load_meeting(self.current_stem)
 
     def _render_markdown_html(self, md_content: str):
         html_body = markdown.markdown(
@@ -142,7 +199,6 @@ class MeetingViewer(QWidget):
         self.browser_summary.setHtml(full_html)
 
     def _on_raw_markdown_edited(self):
-        # Quando o usuário edita a aba de markdown puro, atualiza o HTML e salva
         if not self.current_stem:
             return
         content = self.edit_raw_markdown.toPlainText()
@@ -153,13 +209,26 @@ class MeetingViewer(QWidget):
         except Exception:
             pass
 
+    def _on_transcribe_clicked(self):
+        if not self.current_stem:
+            return
+        wav_path = RECORDINGS_DIR / f"{self.current_stem}.wav"
+        if wav_path.exists():
+            self.transcribe_requested.emit(str(wav_path))
+
+    def _on_summarize_clicked(self):
+        if not self.current_stem:
+            return
+        txt_path = TRANSCRIPTS_DIR / f"{self.current_stem}.txt"
+        if txt_path.exists():
+            self.summarize_requested.emit(str(txt_path))
+
     def _copy_markdown(self):
         content = self.edit_raw_markdown.toPlainText()
         if content:
             QGuiApplication.clipboard().setText(content)
             original_text = self.btn_copy_markdown.text()
             self.btn_copy_markdown.setText("✅ Copied!")
-            from PySide6.QtCore import QTimer
             QTimer.singleShot(2000, lambda: self.btn_copy_markdown.setText(original_text))
 
     def _open_in_editor(self):

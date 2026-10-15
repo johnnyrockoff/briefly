@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import (
     QFrame,
@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Briefly - Intelligent Meeting Summaries")
-        self.setMinimumSize(1050, 720)
+        self.setMinimumSize(1100, 740)
         self.setWindowIcon(QIcon(str(RESOURCES_DIR / "icon.svg")))
 
         # Backend Managers
@@ -50,101 +50,115 @@ class MainWindow(QMainWindow):
         self._init_ui()
         self._connect_signals()
 
-        # Carregar primeira reunião da lista se houver
-        if self.meetings_list.table.rowCount() > 0:
-            first_item = self.meetings_list.table.item(0, 0)
-            if first_item:
-                stem = first_item.data(Qt.ItemDataRole.UserRole)
-                if stem:
-                    self.viewer.load_meeting(stem)
+        # Load first meeting if available
+        first_stem = self.meetings_list.get_first_stem()
+        if first_stem:
+            self.viewer.load_meeting(first_stem)
 
-        # Diagnóstico de dependências em segundo plano após inicialização
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(300, self._check_system_health)
+        # Background dependency & health diagnosis
+        QTimer.singleShot(400, self._check_system_health)
 
     def _init_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
-        main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(16, 12, 16, 12)
-        main_layout.setSpacing(12)
+        main_layout = QHBoxLayout(central)
+        main_layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.setSpacing(0)
 
-        # Header Superior
-        header_layout = QHBoxLayout()
+        # Horizontal Splitter for 2-column layout
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setHandleWidth(3)
 
+        # ==========================================
+        # LEFT PANE: Studio Sidebar
+        # ==========================================
+        sidebar = QFrame()
+        sidebar.setObjectName("sidebar_frame")
+        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout.setContentsMargins(8, 6, 12, 6)
+        sidebar_layout.setSpacing(12)
+
+        # Brand & Quick Utilities Header
+        brand_layout = QHBoxLayout()
         lbl_app_logo = QLabel("🎙️ Briefly")
-        lbl_app_logo.setStyleSheet("font-size: 19px; font-weight: bold; color: #89b4fa;")
-        header_layout.addWidget(lbl_app_logo)
+        lbl_app_logo.setObjectName("lbl_sidebar_title")
+        brand_layout.addWidget(lbl_app_logo)
+        brand_layout.addStretch()
 
-        lbl_app_subtitle = QLabel("• Local Automation with Whisper & Ollama")
-        lbl_app_subtitle.setStyleSheet("font-size: 13px; color: #a6adc8; margin-top: 4px;")
-        header_layout.addWidget(lbl_app_subtitle)
-
-        header_layout.addStretch()
-
-        self.btn_health = QPushButton("🩺 System Check")
+        self.btn_health = QPushButton("🩺 Health")
+        self.btn_health.setToolTip("System dependencies & AI diagnostic check")
         self.btn_health.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_health.clicked.connect(self._open_health_dialog)
-        header_layout.addWidget(self.btn_health)
+        brand_layout.addWidget(self.btn_health)
 
-        btn_settings = QPushButton("⚙️ Settings")
+        btn_settings = QPushButton("⚙")
+        btn_settings.setObjectName("icon_btn")
+        btn_settings.setToolTip("Application Settings")
+        btn_settings.setFixedSize(32, 28)
         btn_settings.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_settings.clicked.connect(self._open_settings)
-        header_layout.addWidget(btn_settings)
+        brand_layout.addWidget(btn_settings)
 
-        main_layout.addLayout(header_layout)
+        sidebar_layout.addLayout(brand_layout)
 
-        # Health Alert Banner (hidden by default)
+        # Recording Card (Studio Widget)
+        self.record_card = RecordCard()
+        sidebar_layout.addWidget(self.record_card)
+
+        # Meetings History List
+        self.meetings_list = MeetingsList()
+        sidebar_layout.addWidget(self.meetings_list, 1)
+
+        splitter.addWidget(sidebar)
+
+        # ==========================================
+        # RIGHT PANE: Main Content Canvas / Viewer
+        # ==========================================
+        canvas = QWidget()
+        canvas_layout = QVBoxLayout(canvas)
+        canvas_layout.setContentsMargins(12, 6, 8, 6)
+        canvas_layout.setSpacing(10)
+
+        # Health Alert Banner (shown only when a warning/error occurs)
         self.banner_frame = QFrame()
+        self.banner_frame.setObjectName("banner_frame")
         self.banner_frame.setStyleSheet(
             "background-color: #312b24; border: 1px solid #fab387; border-radius: 8px; padding: 6px 12px;"
         )
         banner_layout = QHBoxLayout(self.banner_frame)
         banner_layout.setContentsMargins(4, 2, 4, 2)
         self.lbl_banner = QLabel("")
-        self.lbl_banner.setStyleSheet("color: #fab387; font-weight: 500;")
+        self.lbl_banner.setStyleSheet("color: #fab387; font-weight: 600; font-size: 13px;")
         banner_layout.addWidget(self.lbl_banner, 1)
 
         btn_banner_action = QPushButton("Details / Fix")
         btn_banner_action.setFixedWidth(100)
+        btn_banner_action.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_banner_action.clicked.connect(self._open_health_dialog)
         banner_layout.addWidget(btn_banner_action)
 
         btn_banner_close = QPushButton("✕")
-        btn_banner_close.setFixedWidth(30)
+        btn_banner_close.setObjectName("icon_btn")
+        btn_banner_close.setFixedSize(28, 28)
+        btn_banner_close.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_banner_close.clicked.connect(self.banner_frame.hide)
         banner_layout.addWidget(btn_banner_close)
 
         self.banner_frame.hide()
-        main_layout.addWidget(self.banner_frame)
+        canvas_layout.addWidget(self.banner_frame)
 
-        # Card de Gravação (Início / Parada rápida e dispositivos)
-        self.record_card = RecordCard()
-        main_layout.addWidget(self.record_card)
-
-        # Splitter Principal (Histórico à Esquerda | Visualizador à Direita)
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(4)
-
-        # Lado Esquerdo: Lista de Reuniões
-        left_container = QWidget()
-        left_layout = QVBoxLayout(left_container)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        self.meetings_list = MeetingsList()
-        left_layout.addWidget(self.meetings_list)
-        splitter.addWidget(left_container)
-
-        # Lado Direito: Visualizador de Resumo
-        right_container = QWidget()
-        right_layout = QVBoxLayout(right_container)
-        right_layout.setContentsMargins(0, 0, 0, 0)
+        # Meeting Viewer
         self.viewer = MeetingViewer()
-        right_layout.addWidget(self.viewer)
-        splitter.addWidget(right_container)
+        canvas_layout.addWidget(self.viewer, 1)
 
-        # Proporção inicial: 42% lista, 58% visualizador
-        splitter.setSizes([450, 600])
-        main_layout.addWidget(splitter, 1)
+        splitter.addWidget(canvas)
+
+        # Sidebar width ~360px, Canvas takes remainder (~740px)
+        splitter.setSizes([360, 740])
+        splitter.setCollapsible(0, False)
+        splitter.setCollapsible(1, False)
+
+        main_layout.addWidget(splitter)
 
         # Status Bar
         self.status_bar = QStatusBar()
@@ -171,10 +185,13 @@ class MainWindow(QMainWindow):
         self.tray.open_health_requested.connect(self._open_health_dialog)
         self.tray.quit_requested.connect(self._quit_application)
 
-        # Meetings List -> Viewer / Pipelines
+        # Meetings List & Viewer Selection / Actions
         self.meetings_list.meeting_selected.connect(self.viewer.load_meeting)
         self.meetings_list.transcribe_requested.connect(self._start_transcription)
         self.meetings_list.summarize_requested.connect(self._start_summarization)
+
+        self.viewer.transcribe_requested.connect(self._start_transcription)
+        self.viewer.summarize_requested.connect(self._start_summarization)
 
         # Transcriber -> UI & Tray
         self.transcriber.progress.connect(lambda msg: self.viewer.set_processing_status(msg, True))
@@ -205,7 +222,6 @@ class MainWindow(QMainWindow):
         stem = Path(wav_path).stem
         self.viewer.load_meeting(stem)
 
-        # Automação: Transcrever automaticamente se configurado
         if config.get("auto_transcribe", True):
             self._start_transcription(wav_path)
 
@@ -224,7 +240,6 @@ class MainWindow(QMainWindow):
         self.viewer.load_meeting(stem)
         self.viewer.set_processing_status("Transcription completed successfully.", False)
 
-        # Automação: Resumir automaticamente se configurado
         if config.get("auto_summarize", True):
             self._start_summarization(txt_path)
 
@@ -263,21 +278,20 @@ class MainWindow(QMainWindow):
         overall = result["overall"]
 
         if overall == "ok":
-            self.btn_health.setText("🩺 System Ready")
-            self.btn_health.setStyleSheet("color: #a6e3a1;")
+            self.btn_health.setText("🩺 Ready")
+            self.btn_health.setStyleSheet("color: #a6da95; font-weight: 600;")
             self.banner_frame.hide()
         elif overall == "warning":
-            self.btn_health.setText("▲ System Warning")
-            self.btn_health.setStyleSheet("color: #fab387;")
-            # Procura item com warning
+            self.btn_health.setText("▲ Warning")
+            self.btn_health.setStyleSheet("color: #fab387; font-weight: 600;")
             warn_items = [it for it in result["items"] if it["status"] == "warning"]
             if warn_items:
                 first = warn_items[0]
                 self.lbl_banner.setText(f"⚠️ {first['name']}: {first['title']}")
                 self.banner_frame.show()
         else:
-            self.btn_health.setText("✖ System Error")
-            self.btn_health.setStyleSheet("color: #f38ba8;")
+            self.btn_health.setText("✖ Error")
+            self.btn_health.setStyleSheet("color: #ed8796; font-weight: 600;")
             err_items = [it for it in result["items"] if it["status"] == "error"]
             if err_items:
                 first = err_items[0]
