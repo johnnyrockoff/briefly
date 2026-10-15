@@ -4,7 +4,8 @@ from app.audio.devices import resolve_recording_devices
 
 
 def test_resolve_devices_with_auto():
-    with patch("app.audio.devices.get_default_sink", return_value="alsa_output.headphones"), \
+    with patch("sys.platform", "linux"), \
+         patch("app.audio.devices.get_default_sink", return_value="alsa_output.headphones"), \
          patch("app.audio.devices.get_default_source", return_value="alsa_input.mic"):
         monitor, mic = resolve_recording_devices("auto", "auto")
         assert monitor == "alsa_output.headphones.monitor"
@@ -18,7 +19,8 @@ def test_resolve_devices_with_custom():
 
 
 def test_resolve_devices_when_empty():
-    with patch("app.audio.devices.get_default_sink", return_value=""), \
+    with patch("sys.platform", "linux"), \
+         patch("app.audio.devices.get_default_sink", return_value=""), \
          patch("app.audio.devices.get_default_source", return_value=""):
         monitor, mic = resolve_recording_devices("auto", "auto")
         assert monitor is None

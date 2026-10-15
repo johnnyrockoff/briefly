@@ -8,7 +8,7 @@ def test_check_ffmpeg_missing():
         res = check_ffmpeg()
         assert res["status"] == "error"
         assert res["installed"] is False
-        assert "sudo" in res["action"]
+        assert ("sudo" in res["action"] or "winget" in res["action"])
 
 
 def test_check_ffmpeg_present():
