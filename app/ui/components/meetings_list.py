@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.config import RECORDINGS_DIR, SUMMARIES_DIR, TRANSCRIPTS_DIR
+from app.config import get_recordings_dir, get_summaries_dir, get_transcripts_dir
 
 
 class MeetingItemWidget(QWidget):
@@ -32,9 +32,9 @@ class MeetingItemWidget(QWidget):
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(4)
 
-        wav_path = RECORDINGS_DIR / f"{self.stem}.wav"
-        txt_path = TRANSCRIPTS_DIR / f"{self.stem}.txt"
-        md_path = SUMMARIES_DIR / f"{self.stem}.md"
+        wav_path = get_recordings_dir() / f"{self.stem}.wav"
+        txt_path = get_transcripts_dir() / f"{self.stem}.txt"
+        md_path = get_summaries_dir() / f"{self.stem}.md"
 
         # Format title & date
         raw_name = self.stem.replace("reuniao_", "")
@@ -160,16 +160,20 @@ class MeetingsList(QWidget):
         layout.addWidget(self.list_widget, 1)
 
     def reload_meetings(self):
-        RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-        TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
-        SUMMARIES_DIR.mkdir(parents=True, exist_ok=True)
+        rec_dir = get_recordings_dir()
+        txt_dir = get_transcripts_dir()
+        sum_dir = get_summaries_dir()
+
+        rec_dir.mkdir(parents=True, exist_ok=True)
+        txt_dir.mkdir(parents=True, exist_ok=True)
+        sum_dir.mkdir(parents=True, exist_ok=True)
 
         stems = set()
-        for f in RECORDINGS_DIR.glob("*.wav"):
+        for f in rec_dir.glob("*.wav"):
             stems.add(f.stem)
-        for f in TRANSCRIPTS_DIR.glob("*.txt"):
+        for f in txt_dir.glob("*.txt"):
             stems.add(f.stem)
-        for f in SUMMARIES_DIR.glob("*.md"):
+        for f in sum_dir.glob("*.md"):
             stems.add(f.stem)
 
         sorted_stems = sorted(list(stems), reverse=True)
@@ -225,10 +229,10 @@ class MeetingsList(QWidget):
         )
         if reply == QMessageBox.StandardButton.Yes:
             for p in [
-                RECORDINGS_DIR / f"{stem}.wav",
-                TRANSCRIPTS_DIR / f"{stem}.txt",
-                TRANSCRIPTS_DIR / f"{stem}.vtt",
-                SUMMARIES_DIR / f"{stem}.md",
+                get_recordings_dir() / f"{stem}.wav",
+                get_transcripts_dir() / f"{stem}.txt",
+                get_transcripts_dir() / f"{stem}.vtt",
+                get_summaries_dir() / f"{stem}.md",
             ]:
                 if p.exists():
                     try:

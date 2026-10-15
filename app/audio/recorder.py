@@ -10,7 +10,7 @@ from typing import Optional
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from app.audio.devices import resolve_recording_devices
-from app.config import RECORDINGS_DIR, config
+from app.config import config, get_recordings_dir
 
 
 class AudioRecorder(QObject):
@@ -51,9 +51,10 @@ class AudioRecorder(QObject):
             return False
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-        self._current_wav = RECORDINGS_DIR / f"reuniao_{timestamp}.wav"
-        log_file = RECORDINGS_DIR / f"reuniao_{timestamp}.log"
+        rec_dir = get_recordings_dir()
+        rec_dir.mkdir(parents=True, exist_ok=True)
+        self._current_wav = rec_dir / f"reuniao_{timestamp}.wav"
+        log_file = rec_dir / f"reuniao_{timestamp}.log"
 
         cmd = [
             "ffmpeg", "-hide_banner", "-nostdin", "-y",

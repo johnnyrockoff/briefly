@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.config import RECORDINGS_DIR, SUMMARIES_DIR, TRANSCRIPTS_DIR
+from app.config import get_recordings_dir, get_summaries_dir, get_transcripts_dir
 from app.ui.styles import MARKDOWN_HTML_STYLE
 
 
@@ -121,9 +121,9 @@ class MeetingViewer(QWidget):
             pass
         self.lbl_title.setText(f"Meeting: {display_name}")
 
-        wav_path = RECORDINGS_DIR / f"{stem}.wav"
-        txt_path = TRANSCRIPTS_DIR / f"{stem}.txt"
-        md_path = SUMMARIES_DIR / f"{stem}.md"
+        wav_path = get_recordings_dir() / f"{stem}.wav"
+        txt_path = get_transcripts_dir() / f"{stem}.txt"
+        md_path = get_summaries_dir() / f"{stem}.md"
 
         has_wav = wav_path.exists()
         has_txt = txt_path.exists() and txt_path.stat().st_size > 0
@@ -171,6 +171,23 @@ class MeetingViewer(QWidget):
                 f"<p>{hint}</p></div>"
             )
 
+    def clear(self):
+        self.current_stem = None
+        self.lbl_title.setText("Select a Meeting")
+        self.btn_transcribe.setEnabled(False)
+        self.btn_summarize.setEnabled(False)
+        self.btn_copy_markdown.setEnabled(False)
+        self.btn_open_external.setEnabled(False)
+        self.browser_transcript.setPlainText("Select a meeting from the list on the left to view its transcript.")
+        self.edit_raw_markdown.blockSignals(True)
+        self.edit_raw_markdown.setPlainText("")
+        self.edit_raw_markdown.blockSignals(False)
+        self.browser_summary.setHtml(
+            f"{MARKDOWN_HTML_STYLE}<div style='padding: 24px; text-align: center; color: #a5adcb;'>"
+            f"<h3 style='color: #8aadf4;'>No Meeting Selected</h3>"
+            f"<p>Select a meeting from the list or start a new recording.</p></div>"
+        )
+
     def set_processing_status(self, message: str, in_progress: bool = True):
         if in_progress:
             self.lbl_status.setText(f"⏳ {message}")
@@ -203,7 +220,7 @@ class MeetingViewer(QWidget):
             return
         content = self.edit_raw_markdown.toPlainText()
         self._render_markdown_html(content)
-        md_path = SUMMARIES_DIR / f"{self.current_stem}.md"
+        md_path = get_summaries_dir() / f"{self.current_stem}.md"
         try:
             md_path.write_text(content, encoding="utf-8")
         except Exception:
@@ -212,14 +229,14 @@ class MeetingViewer(QWidget):
     def _on_transcribe_clicked(self):
         if not self.current_stem:
             return
-        wav_path = RECORDINGS_DIR / f"{self.current_stem}.wav"
+        wav_path = get_recordings_dir() / f"{self.current_stem}.wav"
         if wav_path.exists():
             self.transcribe_requested.emit(str(wav_path))
 
     def _on_summarize_clicked(self):
         if not self.current_stem:
             return
-        txt_path = TRANSCRIPTS_DIR / f"{self.current_stem}.txt"
+        txt_path = get_transcripts_dir() / f"{self.current_stem}.txt"
         if txt_path.exists():
             self.summarize_requested.emit(str(txt_path))
 
@@ -234,7 +251,7 @@ class MeetingViewer(QWidget):
     def _open_in_editor(self):
         if not self.current_stem:
             return
-        md_path = SUMMARIES_DIR / f"{self.current_stem}.md"
+        md_path = get_summaries_dir() / f"{self.current_stem}.md"
         if md_path.exists():
             import sys
             import os

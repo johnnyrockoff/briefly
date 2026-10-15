@@ -308,6 +308,12 @@ class MainWindow(QMainWindow):
         if dlg.exec():
             self.record_card.refresh_devices()
             self.record_card.refresh_languages()
+            self.meetings_list.reload_meetings()
+            first = self.meetings_list.get_first_stem()
+            if first:
+                self.viewer.load_meeting(first)
+            else:
+                self.viewer.clear()
             self.status_bar.showMessage("Settings updated.")
             self._check_system_health()
 

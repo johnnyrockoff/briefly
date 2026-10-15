@@ -4,7 +4,7 @@ from typing import Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from app.config import TRANSCRIPTS_DIR, config
+from app.config import config, get_transcripts_dir
 
 
 class TranscriptionWorker(QObject):
@@ -45,14 +45,15 @@ class TranscriptionWorker(QObject):
             self.progress.emit(f"Transcribing {self.wav_path.name} (Spoken: {lang_label})...")
             result = model.transcribe(str(self.wav_path), **kwargs)
 
-            TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
-            txt_path = TRANSCRIPTS_DIR / f"{self.wav_path.stem}.txt"
+            t_dir = get_transcripts_dir()
+            t_dir.mkdir(parents=True, exist_ok=True)
+            txt_path = t_dir / f"{self.wav_path.stem}.txt"
             txt_path.write_text(result["text"].strip(), encoding="utf-8")
 
             # Salva também vtt/srt se o usuário quiser detalhes temporais futuramente
             try:
                 from whisper.utils import get_writer
-                writer = get_writer("vtt", str(TRANSCRIPTS_DIR))
+                writer = get_writer("vtt", str(t_dir))
                 writer(result, str(self.wav_path))
             except Exception:
                 pass

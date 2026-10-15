@@ -18,10 +18,45 @@ def _resolve_default_storage() -> Path:
         return legacy_docs
     return docs_dir
 
+def get_storage_base() -> Path:
+    """Returns the root directory where meeting data is stored."""
+    try:
+        if "config" in globals():
+            custom = config.get("storage_dir", "")
+            if custom and str(custom).strip():
+                return Path(str(custom).strip()).expanduser().resolve()
+    except Exception:
+        pass
+    return _resolve_default_storage()
+
+def get_recordings_dir() -> Path:
+    return get_storage_base() / "recordings"
+
+def get_transcripts_dir() -> Path:
+    return get_storage_base() / "transcripts"
+
+def get_summaries_dir() -> Path:
+    return get_storage_base() / "summaries"
+
+def init_storage() -> None:
+    """Ensures storage directory and its subfolders exist."""
+    get_storage_base().mkdir(parents=True, exist_ok=True)
+    get_recordings_dir().mkdir(parents=True, exist_ok=True)
+    get_transcripts_dir().mkdir(parents=True, exist_ok=True)
+    get_summaries_dir().mkdir(parents=True, exist_ok=True)
+
 STORAGE_BASE = _resolve_default_storage()
-RECORDINGS_DIR = STORAGE_BASE / "recordings"
-TRANSCRIPTS_DIR = STORAGE_BASE / "transcripts"
-SUMMARIES_DIR = STORAGE_BASE / "summaries"
+RECORDINGS_DIR = get_recordings_dir()
+TRANSCRIPTS_DIR = get_transcripts_dir()
+SUMMARIES_DIR = get_summaries_dir()
+
+def sync_storage_globals() -> None:
+    global STORAGE_BASE, RECORDINGS_DIR, TRANSCRIPTS_DIR, SUMMARIES_DIR
+    STORAGE_BASE = get_storage_base()
+    RECORDINGS_DIR = get_recordings_dir()
+    TRANSCRIPTS_DIR = get_transcripts_dir()
+    SUMMARIES_DIR = get_summaries_dir()
+    init_storage()
 
 import sys
 
@@ -47,6 +82,7 @@ from app.languages import PROMPTS_BY_LANGUAGE, get_prompt_for_language
 DEFAULT_SYSTEM_PROMPT = PROMPTS_BY_LANGUAGE["pt"]
 
 DEFAULT_CONFIG: Dict[str, Any] = {
+    "storage_dir": "",            # Custom storage location (empty = default ~/Documents/Briefly)
     "whisper_model": "small",
     "whisper_device": "cuda",
     "input_language": "auto",       # Spoken language: 'auto', 'pt', 'en', 'es', etc.
@@ -84,11 +120,9 @@ class ConfigManager:
 
     def __init__(self):
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-        TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
-        SUMMARIES_DIR.mkdir(parents=True, exist_ok=True)
         self.data: Dict[str, Any] = dict(DEFAULT_CONFIG)
         self.load()
+        init_storage()
 
     def load(self) -> None:
         target = CONFIG_FILE if CONFIG_FILE.exists() else (LEGACY_CONFIG_FILE if LEGACY_CONFIG_FILE.exists() else None)
@@ -99,6 +133,7 @@ class ConfigManager:
                     self.data.update(loaded)
             except Exception as e:
                 print(f"Error loading configuration: {e}")
+        sync_storage_globals()
 
     def save(self) -> None:
         try:
@@ -106,6 +141,7 @@ class ConfigManager:
                 json.dump(self.data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"Erro ao salvar configurações: {e}")
+        sync_storage_globals()
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.data.get(key, default)
@@ -116,3 +152,4 @@ class ConfigManager:
 
 
 config = ConfigManager()
+sync_storage_globals()

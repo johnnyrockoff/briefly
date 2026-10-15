@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from app.config import SUMMARIES_DIR, config, get_effective_system_prompt
+from app.config import config, get_effective_system_prompt, get_summaries_dir
 
 
 def get_available_ollama_models(ollama_tags_url: Optional[str] = None) -> List[str]:
@@ -97,8 +97,9 @@ class SummarizerWorker(QObject):
                 self.error.emit("Ollama returned an empty response.")
                 return
 
-            SUMMARIES_DIR.mkdir(parents=True, exist_ok=True)
-            output_path = SUMMARIES_DIR / f"{self.txt_path.stem}.md"
+            s_dir = get_summaries_dir()
+            s_dir.mkdir(parents=True, exist_ok=True)
+            output_path = s_dir / f"{self.txt_path.stem}.md"
 
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             document = (

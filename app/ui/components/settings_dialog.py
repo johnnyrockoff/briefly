@@ -1,9 +1,16 @@
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QFileDialog,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -16,7 +23,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.config import DEFAULT_SYSTEM_PROMPT, config
+from app.config import (
+    DEFAULT_SYSTEM_PROMPT,
+    _resolve_default_storage,
+    config,
+    get_storage_base,
+)
 from app.languages import INPUT_LANGUAGES, OUTPUT_LANGUAGES, get_prompt_for_language
 from app.summarization.summarizer import get_available_ollama_models
 
@@ -36,7 +48,81 @@ class SettingsDialog(QDialog):
         self.tabs = QTabWidget()
 
         # ==========================================
-        # Tab 1: 🌐 Languages (Input & Output)
+        # Tab 1: 📁 Storage & Files
+        # ==========================================
+        tab_storage = QWidget()
+        layout_storage = QVBoxLayout(tab_storage)
+        layout_storage.setSpacing(14)
+
+        lbl_st_title = QLabel("Meeting Data & Storage Directory")
+        lbl_st_title.setStyleSheet("font-size: 14px; font-weight: bold; color: #cad3f5;")
+        layout_storage.addWidget(lbl_st_title)
+
+        lbl_st_info = QLabel(
+            "Select the root folder where Briefly creates and manages your meeting data.\n"
+            "Inside this folder, Briefly organizes files into subfolders: recordings/ (.wav audio), "
+            "transcripts/ (.txt & .vtt text), and summaries/ (.md executive notes)."
+        )
+        lbl_st_info.setWordWrap(True)
+        lbl_st_info.setStyleSheet("color: #a5adcb; font-size: 11px;")
+        layout_storage.addWidget(lbl_st_info)
+
+        # Folder picker row
+        row_path = QHBoxLayout()
+        self.txt_storage_dir = QLineEdit()
+        self.txt_storage_dir.setPlaceholderText("Default: ~/Documents/Briefly")
+        row_path.addWidget(self.txt_storage_dir, 1)
+
+        btn_browse = QPushButton("📁 Browse...")
+        btn_browse.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_browse.clicked.connect(self._browse_storage_dir)
+        row_path.addWidget(btn_browse)
+
+        btn_reset_storage = QPushButton("Reset to Default")
+        btn_reset_storage.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_reset_storage.clicked.connect(self._reset_storage_dir)
+        row_path.addWidget(btn_reset_storage)
+
+        layout_storage.addLayout(row_path)
+
+        # Quick action: Open Folder in OS file manager
+        row_open = QHBoxLayout()
+        btn_open_folder = QPushButton("📂 Open Storage Folder in File Manager")
+        btn_open_folder.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_open_folder.clicked.connect(self._open_storage_folder)
+        row_open.addWidget(btn_open_folder)
+        row_open.addStretch()
+        layout_storage.addLayout(row_open)
+
+        # Subfolders overview
+        group_sub = QFrame()
+        group_sub.setStyleSheet("background-color: rgba(30, 32, 48, 0.5); border-radius: 8px; padding: 10px;")
+        layout_sub = QVBoxLayout(group_sub)
+        layout_sub.setSpacing(6)
+
+        lbl_sub_head = QLabel("Automatic Directory Structure:")
+        lbl_sub_head.setStyleSheet("font-weight: bold; color: #8aadf4; font-size: 12px;")
+        layout_sub.addWidget(lbl_sub_head)
+
+        lbl_s1 = QLabel("• 🎙️ <b>recordings/</b> — 16 kHz normalized mono meeting audio recordings (.wav)")
+        lbl_s1.setStyleSheet("color: #cad3f5; font-size: 11px;")
+        layout_sub.addWidget(lbl_s1)
+
+        lbl_s2 = QLabel("• 📝 <b>transcripts/</b> — Whisper offline transcripts (.txt) and timestamped subtitles (.vtt)")
+        lbl_s2.setStyleSheet("color: #cad3f5; font-size: 11px;")
+        layout_sub.addWidget(lbl_s2)
+
+        lbl_s3 = QLabel("• 📋 <b>summaries/</b> — Local Ollama AI structured executive notes in Markdown (.md)")
+        lbl_s3.setStyleSheet("color: #cad3f5; font-size: 11px;")
+        layout_sub.addWidget(lbl_s3)
+
+        layout_storage.addWidget(group_sub)
+        layout_storage.addStretch()
+
+        self.tabs.addTab(tab_storage, "📁 Storage")
+
+        # ==========================================
+        # Tab 2: 🌐 Languages (Input & Output)
         # ==========================================
         tab_lang = QWidget()
         form_lang = QFormLayout(tab_lang)
@@ -170,7 +256,37 @@ class SettingsDialog(QDialog):
 
         layout.addLayout(btn_box)
 
+    def _browse_storage_dir(self):
+        current = self.txt_storage_dir.text().strip() or str(get_storage_base())
+        chosen = QFileDialog.getExistingDirectory(self, "Select Storage Directory for Briefly", current)
+        if chosen:
+            self.txt_storage_dir.setText(chosen)
+
+    def _reset_storage_dir(self):
+        default_dir = _resolve_default_storage()
+        self.txt_storage_dir.setText(str(default_dir))
+
+    def _open_storage_folder(self):
+        folder = Path(self.txt_storage_dir.text().strip() or str(get_storage_base()))
+        folder.mkdir(parents=True, exist_ok=True)
+        try:
+            if sys.platform == "win32":
+                os.startfile(str(folder))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(folder)])
+            else:
+                subprocess.Popen(["xdg-open", str(folder)])
+        except Exception as e:
+            QMessageBox.warning(self, "Open Folder", f"Could not open directory: {e}")
+
     def _load_values(self):
+        # Storage
+        saved_storage = config.get("storage_dir", "")
+        if saved_storage:
+            self.txt_storage_dir.setText(saved_storage)
+        else:
+            self.txt_storage_dir.setText(str(get_storage_base()))
+
         # Languages
         saved_in = config.get("input_language", "auto")
         idx_in = self.combo_input_lang.findData(saved_in)
@@ -228,6 +344,14 @@ class SettingsDialog(QDialog):
         self.txt_system_prompt.setPlainText(template)
 
     def _save_values(self):
+        # Storage
+        new_storage = self.txt_storage_dir.text().strip()
+        default_storage = str(_resolve_default_storage())
+        if not new_storage or new_storage == default_storage:
+            config.set("storage_dir", "")
+        else:
+            config.set("storage_dir", new_storage)
+
         config.set("input_language", self.combo_input_lang.currentData())
         config.set("output_language", self.combo_output_lang.currentData())
         config.set("whisper_model", self.combo_whisper_model.currentText())
