@@ -28,8 +28,16 @@ import sys
 if sys.platform == "win32":
     appdata = os.getenv("APPDATA")
     CONFIG_DIR = Path(appdata) / "Briefly" if appdata else Path.home() / "AppData" / "Roaming" / "Briefly"
+    local_appdata = os.getenv("LOCALAPPDATA")
+    LOCAL_BIN_DIR = (Path(local_appdata) if local_appdata else Path.home() / "AppData" / "Local") / "Briefly" / "bin"
 else:
     CONFIG_DIR = Path.home() / ".config" / "briefly"
+    LOCAL_BIN_DIR = Path.home() / ".local" / "share" / "briefly" / "bin"
+
+LOCAL_BIN_DIR.mkdir(parents=True, exist_ok=True)
+str_bin = str(LOCAL_BIN_DIR)
+if str_bin not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = str_bin + os.pathsep + os.environ.get("PATH", "")
 
 LEGACY_CONFIG_FILE = Path.home() / ".config" / "meeting-notes" / "config.json"
 CONFIG_FILE = CONFIG_DIR / "config.json"
