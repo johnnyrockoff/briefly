@@ -5,8 +5,13 @@ on:
     branches:
       - main
       - develop
+      - 'feature/**'
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
+      - develop
   workflow_dispatch:
 
 permissions:
@@ -90,7 +95,7 @@ jobs:
           generate_release_notes: true
 
       - name: Update Continuous Pre-Release (Linux)
-        if: steps.vars.outputs.IS_TAG == 'false'
+        if: steps.vars.outputs.IS_TAG == 'false' && (github.ref_name == 'develop' || github.ref_name == 'main')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
@@ -178,7 +183,7 @@ jobs:
           generate_release_notes: true
 
       - name: Update Continuous Pre-Release (Windows)
-        if: steps.vars.outputs.IS_TAG == 'false'
+        if: steps.vars.outputs.IS_TAG == 'false' && (github.ref_name == 'develop' || github.ref_name == 'main')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
