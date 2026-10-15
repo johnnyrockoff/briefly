@@ -8,16 +8,23 @@ from typing import Any, Dict, List
 from app.config import config
 
 
+import sys
+
 def check_ffmpeg() -> Dict[str, Any]:
     path = shutil.which("ffmpeg")
     if not path:
+        action = (
+            "Install via terminal: winget install Gyan.FFmpeg (or download from https://ffmpeg.org)"
+            if sys.platform == "win32"
+            else "Install via terminal: sudo apt install ffmpeg (Ubuntu/Debian) or sudo dnf install ffmpeg (Fedora)"
+        )
         return {
             "name": "FFmpeg Audio Engine",
             "status": "error",
             "installed": False,
             "title": "FFmpeg is not installed",
             "message": "FFmpeg is required to record and mix computer and microphone audio.",
-            "action": "Install via terminal: sudo apt install ffmpeg (Ubuntu/Debian) or sudo dnf install ffmpeg (Fedora)",
+            "action": action,
         }
     try:
         res = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True, timeout=2)
@@ -42,6 +49,16 @@ def check_ffmpeg() -> Dict[str, Any]:
 
 
 def check_audio_server() -> Dict[str, Any]:
+    if sys.platform == "win32":
+        return {
+            "name": "Windows Audio Engine (WASAPI)",
+            "status": "ok",
+            "installed": True,
+            "title": "Windows Audio Ready",
+            "message": "Native Windows Audio Session API (WASAPI Loopback) ready.",
+            "action": None,
+        }
+
     path = shutil.which("pactl")
     if not path:
         return {

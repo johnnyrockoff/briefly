@@ -23,7 +23,14 @@ RECORDINGS_DIR = STORAGE_BASE / "recordings"
 TRANSCRIPTS_DIR = STORAGE_BASE / "transcripts"
 SUMMARIES_DIR = STORAGE_BASE / "summaries"
 
-CONFIG_DIR = Path.home() / ".config" / "briefly"
+import sys
+
+if sys.platform == "win32":
+    appdata = os.getenv("APPDATA")
+    CONFIG_DIR = Path(appdata) / "Briefly" if appdata else Path.home() / "AppData" / "Roaming" / "Briefly"
+else:
+    CONFIG_DIR = Path.home() / ".config" / "briefly"
+
 LEGACY_CONFIG_FILE = Path.home() / ".config" / "meeting-notes" / "config.json"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
