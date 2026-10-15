@@ -193,11 +193,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Checking and purging previous assets from 'latest' release..."
-          if gh release view latest >/dev/null 2>&1; then
-            gh release view latest --json assets -q '.assets[].name' | while read -r asset; do
+          if gh release view latest --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release view latest --repo "${{ github.repository }}" --json assets -q '.assets[].name' | while read -r asset; do
               if [ -n "$asset" ]; then
                 echo "Deleting obsolete asset: $asset"
-                gh release delete-asset latest "$asset" -y || true
+                gh release delete-asset latest "$asset" -y --repo "${{ github.repository }}" || true
               fi
             done
           fi
