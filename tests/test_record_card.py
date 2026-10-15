@@ -1,11 +1,26 @@
+import os
 import pytest
-from PySide6.QtWidgets import QApplication
 
-from app.ui.components.record_card import RecordCard
+# Ensure offscreen Qt platform for headless CI runs
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+try:
+    from PySide6.QtWidgets import QApplication
+    from app.ui.components.record_card import RecordCard
+    PYSIDE_AVAILABLE = True
+except (ImportError, OSError):
+    PYSIDE_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(
+    not PYSIDE_AVAILABLE,
+    reason="PySide6 GUI libraries (libEGL/display) not available in headless environment"
+)
 
 
 @pytest.fixture(scope="session")
 def qapp():
+    if not PYSIDE_AVAILABLE:
+        return None
     app = QApplication.instance()
     if app is None:
         app = QApplication([])
