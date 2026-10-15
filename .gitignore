@@ -218,3 +218,22 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Briefly / Meeting Notes App Specific
+.venv/
+venv/
+*.wav
+*.mp3
+*.m4a
+.recording*
+.recording-state
+.recording.log
+dist/deb-build/
+
+# Keep directories but ignore meeting files
+recordings/*
+!recordings/.gitkeep
+transcripts/*
+!transcripts/.gitkeep
+summaries/*
+!summaries/.gitkeep

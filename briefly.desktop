@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Briefly
+GenericName=AI Meeting Summaries
+Comment=Record meetings, transcribe with Whisper and generate executive summaries with Ollama locally.
+Exec=/home/johnnyrocha/Documents/meeting-notes/run_app.sh
+Icon=briefly
+Terminal=false
+Categories=Utility;AudioVideo;Audio;Office;
+Keywords=Briefly;Meeting;Notes;Whisper;Ollama;AI;Record;Summary;Transcription;
+StartupNotify=true
+StartupWMClass=briefly

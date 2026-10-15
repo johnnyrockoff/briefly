@@ -1,0 +1,10 @@
+# Interface Gráfica e Renderização
+PySide6>=6.6.0
+markdown>=3.5.0
+
+# Transcrição com IA
+openai-whisper>=20231117
+torch>=2.1.0
+
+# Ferramentas de Testes e Qualidade
+pytest>=8.0.0

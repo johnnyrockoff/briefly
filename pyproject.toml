@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "briefly"
+version = "1.0.0"
+description = "Linux desktop app for meeting audio recording, local Whisper transcription and Ollama AI summaries."
+readme = "README.md"
+authors = [{ name = "Johnny Rocha" }]
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "PySide6>=6.6.0",
+    "markdown>=3.5.0",
+    "openai-whisper>=20231117",
+    "torch>=2.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+briefly = "main:main"
+meeting-notes = "main:main"
+
+[project.urls]
+Homepage = "https://github.com/johnnyrockoff/briefly"
+Repository = "https://github.com/johnnyrockoff/briefly"
