@@ -236,4 +236,11 @@ class MeetingViewer(QWidget):
             return
         md_path = SUMMARIES_DIR / f"{self.current_stem}.md"
         if md_path.exists():
-            subprocess.Popen(["xdg-open", str(md_path)])
+            import sys
+            import os
+            if sys.platform == "win32":
+                os.startfile(str(md_path))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(md_path)])
+            else:
+                subprocess.Popen(["xdg-open", str(md_path)])

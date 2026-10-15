@@ -1,6 +1,7 @@
 import os
 import signal
 import subprocess
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -15,7 +16,7 @@ from app.config import RECORDINGS_DIR, config
 class AudioRecorder(QObject):
     """
     Manages background audio recording of system monitor (call participants)
-    and user microphone using FFmpeg.
+    and user microphone using FFmpeg across Linux (Pulse/PipeWire) and Windows (WASAPI).
     """
     state_changed = Signal(bool)          # True when recording starts, False when stops
     tick = Signal(int)                   # Elapsed seconds
@@ -58,13 +59,15 @@ class AudioRecorder(QObject):
             "ffmpeg", "-hide_banner", "-nostdin", "-y",
         ]
 
+        audio_format = "wasapi" if sys.platform == "win32" else "pulse"
+
         if monitor and mic:
-            # Ambos disponíveis: mixar 2 inputs
+            # Both available: mix 2 inputs
             cmd.extend([
                 "-thread_queue_size", "2048",
-                "-f", "pulse", "-i", monitor,
+                "-f", audio_format, "-i", monitor,
                 "-thread_queue_size", "2048",
-                "-f", "pulse", "-i", mic,
+                "-f", audio_format, "-i", mic,
                 "-filter_complex",
                 "[0:a]aresample=16000,aformat=channel_layouts=mono[out];"
                 "[1:a]aresample=16000,aformat=channel_layouts=mono[mic];"
@@ -76,10 +79,10 @@ class AudioRecorder(QObject):
                 str(self._current_wav)
             ])
         elif monitor:
-            # Apenas áudio do computador
+            # System audio only
             cmd.extend([
                 "-thread_queue_size", "2048",
-                "-f", "pulse", "-i", monitor,
+                "-f", audio_format, "-i", monitor,
                 "-af", "aresample=16000,aformat=channel_layouts=mono",
                 "-ac", "1",
                 "-ar", "16000",
@@ -87,10 +90,10 @@ class AudioRecorder(QObject):
                 str(self._current_wav)
             ])
         else:
-            # Apenas microfone
+            # Microphone only
             cmd.extend([
                 "-thread_queue_size", "2048",
-                "-f", "pulse", "-i", mic,
+                "-f", audio_format, "-i", mic,
                 "-af", "aresample=16000,aformat=channel_layouts=mono",
                 "-ac", "1",
                 "-ar", "16000",
@@ -100,18 +103,21 @@ class AudioRecorder(QObject):
 
         try:
             self._log_handle = open(log_file, "w", encoding="utf-8")
-            # Iniciar processo com grupo de processo próprio para manipulação segura de sinais
+            creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
+            preexec_fn = os.setsid if sys.platform != "win32" else None
+
             self._process = subprocess.Popen(
                 cmd,
                 stdout=self._log_handle,
                 stderr=self._log_handle,
-                preexec_fn=os.setsid,
+                preexec_fn=preexec_fn,
+                creationflags=creationflags,
             )
         except Exception as e:
             self.error.emit(f"Failed to start FFmpeg: {e}")
             return False
 
-        # Verifica se o processo permaneceu vivo por 1 segundo
+        # Verify process stayed alive
         time.sleep(1.0)
         if self._process.poll() is not None:
             self.error.emit(f"FFmpeg exited unexpectedly. Check logs at {log_file}")
@@ -132,21 +138,33 @@ class AudioRecorder(QObject):
         proc = self._process
         self._process = None
 
-        try:
-            # Envia SIGINT para o grupo de processo (equivalente ao Ctrl+C limpo para fechar WAV)
-            os.killpg(os.getpgid(proc.pid), signal.SIGINT)
-        except ProcessLookupError:
-            pass
+        if sys.platform == "win32":
+            ctrl_break = getattr(signal, "CTRL_BREAK_EVENT", None)
+            if ctrl_break is not None:
+                try:
+                    proc.send_signal(ctrl_break)
+                except Exception:
+                    proc.terminate()
+            else:
+                proc.terminate()
+        else:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGINT)
+            except ProcessLookupError:
+                pass
 
-        # Aguarda finalização limpa do processo
+        # Wait for clean process finalization
         try:
             proc.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            try:
-                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-                proc.wait(timeout=5)
-            except Exception:
-                pass
+            if sys.platform == "win32":
+                proc.terminate()
+            else:
+                try:
+                    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                    proc.wait(timeout=5)
+                except Exception:
+                    pass
 
         if hasattr(self, "_log_handle") and self._log_handle and not self._log_handle.closed:
             self._log_handle.close()

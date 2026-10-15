@@ -1,5 +1,6 @@
 import json
 import subprocess
+import sys
 from typing import Dict, List, Optional, Tuple
 
 
@@ -32,11 +33,60 @@ def _run_pactl_text(args: List[str]) -> str:
         return ""
 
 
+def _list_windows_wasapi_devices() -> Tuple[List[Dict[str, str]], List[Dict[str, str]]]:
+    sinks = [{
+        "name": "loopback",
+        "monitor_name": "loopback",
+        "description": "Default System Audio (WASAPI Loopback)",
+        "is_default": True,
+    }]
+    mics = [{
+        "name": "default",
+        "description": "Default Microphone (WASAPI)",
+        "is_default": True,
+    }]
+
+    try:
+        res = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-list_devices", "true", "-f", "wasapi", "-i", "dummy"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        lines = (res.stderr or "").splitlines()
+        for line in lines:
+            if '"' in line:
+                dev_name = line.split('"')[1]
+                if dev_name:
+                    lower = line.lower()
+                    if any(k in lower for k in ["render", "playback", "speaker", "headphone", "output"]):
+                        sinks.append({
+                            "name": f"loopback:{dev_name}",
+                            "monitor_name": f"loopback:{dev_name}",
+                            "description": dev_name,
+                            "is_default": False,
+                        })
+                    elif any(k in lower for k in ["capture", "mic", "input"]):
+                        mics.append({
+                            "name": dev_name,
+                            "description": dev_name,
+                            "is_default": False,
+                        })
+    except Exception:
+        pass
+
+    return sinks, mics
+
+
 def get_default_sink() -> str:
+    if sys.platform == "win32":
+        return "loopback"
     return _run_pactl_text(["get-default-sink"])
 
 
 def get_default_source() -> str:
+    if sys.platform == "win32":
+        return "default"
     return _run_pactl_text(["get-default-source"])
 
 
@@ -44,10 +94,14 @@ def list_sinks() -> List[Dict[str, str]]:
     """
     Returns list of sinks (audio output devices) with keys:
     - 'name': technical sink name
-    - 'monitor_name': monitor source name (<name>.monitor)
+    - 'monitor_name': monitor source name
     - 'description': human readable name
     - 'is_default': bool
     """
+    if sys.platform == "win32":
+        sinks, _ = _list_windows_wasapi_devices()
+        return sinks
+
     default_sink = get_default_sink()
     raw = _run_pactl_json(["list", "sinks"])
     sinks = []
@@ -68,11 +122,15 @@ def list_sinks() -> List[Dict[str, str]]:
 
 def list_microphones() -> List[Dict[str, str]]:
     """
-    Returns list of microphones (excluding monitors) with keys:
+    Returns list of microphones with keys:
     - 'name': technical source name
     - 'description': human readable name
     - 'is_default': bool
     """
+    if sys.platform == "win32":
+        _, mics = _list_windows_wasapi_devices()
+        return mics
+
     default_source = get_default_source()
     raw = _run_pactl_json(["list", "sources"])
     mics = []
@@ -80,7 +138,6 @@ def list_microphones() -> List[Dict[str, str]]:
         name = item.get("name", "")
         if not name:
             continue
-        # Ignorar monitores de sinks para a lista de microfones
         if name.endswith(".monitor") or item.get("monitor_source"):
             continue
         desc = item.get("description", "") or item.get("properties", {}).get("device.description", name)
@@ -97,10 +154,15 @@ def resolve_recording_devices(
     selected_mic: str = "auto"
 ) -> Tuple[Optional[str], Optional[str]]:
     """
-    Resolves actual PulseAudio/PipeWire device names for FFmpeg.
+    Resolves actual device names for FFmpeg (WASAPI on Windows, PulseAudio/PipeWire on Linux).
     Returns (monitor_source_name, mic_source_name).
     """
-    # Resolve monitor (computador/reuniao)
+    if sys.platform == "win32":
+        monitor = "loopback" if (selected_sink_monitor == "auto" or not selected_sink_monitor) else selected_sink_monitor
+        mic = "default" if (selected_mic == "auto" or not selected_mic) else selected_mic
+        return monitor, mic
+
+    # Linux (PulseAudio / PipeWire)
     if selected_sink_monitor == "auto" or not selected_sink_monitor:
         def_sink = get_default_sink()
         if def_sink:
@@ -110,7 +172,6 @@ def resolve_recording_devices(
     else:
         resolved_monitor = selected_sink_monitor
 
-    # Resolve mic
     if selected_mic == "auto" or not selected_mic:
         def_source = get_default_source()
         resolved_mic = def_source if def_source else None
