@@ -58,8 +58,9 @@ jobs:
             VERSION="${GITHUB_REF#refs/tags/v}"
             IS_TAG=true
           else
+            CLEAN_REF=$(echo "${{ github.ref_name }}" | tr '/' '-' | tr -cd 'a-zA-Z0-9.-')
             SHORT_SHA=$(git rev-parse --short HEAD)
-            VERSION="1.0.0-${{ github.ref_name }}.${SHORT_SHA}"
+            VERSION="1.0.0-${CLEAN_REF}.${SHORT_SHA}"
             IS_TAG=false
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
@@ -151,8 +152,9 @@ jobs:
             VERSION="${GITHUB_REF#refs/tags/v}"
             IS_TAG=true
           else
+            CLEAN_REF=$(echo "${{ github.ref_name }}" | tr '/' '-' | tr -cd 'a-zA-Z0-9.-')
             SHORT_SHA=$(git rev-parse --short HEAD)
-            VERSION="1.0.0-${{ github.ref_name }}.${SHORT_SHA}"
+            VERSION="1.0.0-${CLEAN_REF}.${SHORT_SHA}"
             IS_TAG=false
           fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
