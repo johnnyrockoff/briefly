@@ -80,41 +80,11 @@ jobs:
       - name: Upload Linux Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: briefly-linux-${{ steps.vars.outputs.VERSION }}
+          name: linux-dist
           path: |
             dist/*.deb
             dist/*.tar.gz
-          retention-days: 14
-
-      - name: Create or Update Official GitHub Release (Linux)
-        if: steps.vars.outputs.IS_TAG == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            dist/*.deb
-            dist/*.tar.gz
-          generate_release_notes: true
-
-      - name: Update Continuous Pre-Release (Linux)
-        if: steps.vars.outputs.IS_TAG == 'false' && (github.ref_name == 'develop' || github.ref_name == 'main')
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: "Briefly Latest Build (${{ github.ref_name }})"
-          body: |
-            ### 🚀 Continuous Build (Automated)
-            This is an automated build generated from commit `${{ github.sha }}` on branch `${{ github.ref_name }}`.
-
-            **Available Downloads:**
-            - **Debian / Ubuntu / Mint**: `.deb` package
-            - **Universal Linux**: `.tar.gz` portable bundle
-            - **Windows**: `.zip` portable package with `Briefly.exe`
-
-            *Automated build by GitHub Actions.*
-          prerelease: true
-          files: |
-            dist/*.deb
-            dist/*.tar.gz
+          retention-days: 7
 
   # ==========================================
   # WINDOWS BUILD JOB (.zip with Briefly.exe)
@@ -173,21 +143,91 @@ jobs:
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: briefly-windows-${{ steps.vars.outputs.VERSION }}
+          name: windows-dist
           path: dist/*.zip
-          retention-days: 14
+          retention-days: 7
 
-      - name: Create or Update Official GitHub Release (Windows)
-        if: steps.vars.outputs.IS_TAG == 'true'
+  # ==========================================
+  # UNIFIED RELEASE JOB (Linux + Windows)
+  # ==========================================
+  publish-release:
+    name: Publish Release (Linux & Windows)
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-dist
+          path: release-assets
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-dist
+          path: release-assets
+
+      - name: Inspect Downloaded Assets
+        run: |
+          mkdir -p final-dist
+          cp release-assets/* final-dist/
+          ls -la final-dist/
+
+      # Official Tag Release (e.g. v1.0.0)
+      - name: Publish Official GitHub Release (v*)
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.zip
+          files: final-dist/*
           generate_release_notes: true
 
-      - name: Update Continuous Pre-Release (Windows)
-        if: steps.vars.outputs.IS_TAG == 'false' && (github.ref_name == 'develop' || github.ref_name == 'main')
+      # Continuous Pre-Release: Clean up obsolete files
+      - name: Clean Up Old Assets from 'latest' Release
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Checking and purging previous assets from 'latest' release..."
+          if gh release view latest >/dev/null 2>&1; then
+            gh release view latest --json assets -q '.assets[].name' | while read -r asset; do
+              if [ -n "$asset" ]; then
+                echo "Deleting obsolete asset: $asset"
+                gh release delete-asset latest "$asset" -y || true
+              fi
+            done
+          fi
+
+      # Standardize latest filenames for clear user experience
+      - name: Standardize Latest Release File Names
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        run: |
+          cd final-dist
+          for f in *windows*.zip; do [ -f "$f" ] && mv "$f" briefly-windows-portable.zip; done
+          for f in *.deb; do [ -f "$f" ] && mv "$f" briefly-linux-latest.deb; done
+          for f in *linux*.tar.gz; do [ -f "$f" ] && mv "$f" briefly-linux-portable.tar.gz; done
+          echo "Final assets to upload:"
+          ls -la
+
+      - name: Publish Clean Latest Pre-Release
+        if: "!startsWith(github.ref, 'refs/tags/v')"
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
+          name: "Briefly Latest Build (${{ github.ref_name }})"
+          body: |
+            ### 🚀 Continuous Build (Automated)
+            This is an automated build generated from commit `${{ github.sha }}` on branch `${{ github.ref_name }}`.
+
+            **Downloads:**
+            - **Windows (10/11)**: `briefly-windows-portable.zip` (Extract & run `Briefly.exe`)
+            - **Debian / Ubuntu / Mint**: `briefly-linux-latest.deb`
+            - **Universal Linux**: `briefly-linux-portable.tar.gz`
+
+            *This pre-release automatically cleans old builds on every update to keep only the latest files.*
           prerelease: true
-          files: dist/*.zip
+          files: final-dist/*
