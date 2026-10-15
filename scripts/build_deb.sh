@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 VERSION="${1:-1.0.0}"
+# Sanitize version string for Debian package format (replaces / with - and removes invalid chars)
+VERSION="$(echo "$VERSION" | tr '/' '-' | tr -cd 'a-zA-Z0-9.+~-')"
 PKG_NAME="briefly"
 ARCH="all"
 BUILD_ROOT="$ROOT_DIR/dist/deb-build"
