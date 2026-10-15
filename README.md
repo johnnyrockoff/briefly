@@ -1,5 +1,6 @@
 # 🎙️ Briefly
 
+[![Latest Release](https://img.shields.io/github/v/release/johnnyrockoff/briefly?color=0078D6&label=Latest%20Release&logo=github)](https://github.com/johnnyrockoff/briefly/releases/latest)
 [![Linux](https://img.shields.io/badge/OS-Linux-FCC624?logo=linux&logoColor=black)](https://github.com)
 [![Windows](https://img.shields.io/badge/OS-Windows%2010%2F11-0078D6?logo=windows&logoColor=white)](https://github.com)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://python.org)
@@ -9,6 +10,20 @@
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 > **Briefly** is an intelligent, privacy-first cross-platform desktop app for **Linux** and **Windows** that records online meetings (capturing both other participants and your microphone), generates high-fidelity offline transcriptions with **OpenAI Whisper**, and crafts structured executive summaries using local LLMs via **Ollama**.
+
+---
+
+## 📥 Instant Downloads (1-Click)
+
+Click below to download the latest stable release for your operating system (links always point to the newest version automatically):
+
+| Operating System | Package Format | Architecture | Direct Download |
+| :--- | :--- | :---: | :---: |
+| 🪟 **Windows 10 / 11** | Portable ZIP (`Briefly.exe`) | 64-bit | [⬇️ **Download Briefly for Windows**](https://github.com/johnnyrockoff/briefly/releases/latest/download/briefly-windows-portable.zip) |
+| 🐧 **Ubuntu / Debian / Mint** | Debian Installer (`.deb`) | Universal | [⬇️ **Download .deb Package**](https://github.com/johnnyrockoff/briefly/releases/latest/download/briefly-linux.deb) |
+| 🐧 **Universal Linux** (Fedora / Arch) | Portable Bundle (`.tar.gz`) | 64-bit | [⬇️ **Download .tar.gz Bundle**](https://github.com/johnnyrockoff/briefly/releases/latest/download/briefly-linux-portable.tar.gz) |
+
+> 💡 *Need a continuous nightly build or older versions? View all releases on the [GitHub Releases page](https://github.com/johnnyrockoff/briefly/releases).*
 
 ---
 
@@ -34,14 +49,12 @@
 
 ---
 
-## 📦 Installation & Downloads
-
-Pre-built binaries are available under the [Releases](https://github.com/johnnyrockoff/briefly/releases) tab (or download continuous builds from the `latest` tag).
+## 📦 Installation & Setup
 
 ### 🪟 Windows (10 / 11)
-1. Download `briefly-*-windows-portable.zip` from [Releases](https://github.com/johnnyrockoff/briefly/releases).
-2. Extract the ZIP anywhere on your system.
-3. Run `Briefly.exe`.
+1. Download [briefly-windows-portable.zip](https://github.com/johnnyrockoff/briefly/releases/latest/download/briefly-windows-portable.zip).
+2. Extract the ZIP anywhere on your PC.
+3. Double-click `Briefly.exe` to run.
 *(On first launch, Briefly will detect if FFmpeg or Ollama are missing and offer to install/configure them with 1 click).*
 
 ---

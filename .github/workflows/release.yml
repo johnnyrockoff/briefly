@@ -178,7 +178,17 @@ jobs:
           cp release-assets/* final-dist/
           ls -la final-dist/
 
-      # Official Tag Release (e.g. v1.0.0)
+      # Prepare standardized universal assets (powers /releases/latest/download/... permalinks)
+      - name: Prepare Standardized Universal Assets
+        run: |
+          cd final-dist
+          for f in *windows*.zip; do [ -f "$f" ] && cp "$f" briefly-windows-portable.zip; done
+          for f in *.deb; do [ -f "$f" ] && cp "$f" briefly-linux.deb; done
+          for f in *linux*.tar.gz; do [ -f "$f" ] && cp "$f" briefly-linux-portable.tar.gz; done
+          echo "Assets prepared for upload:"
+          ls -la
+
+      # Official Tag Release (e.g. v1.1.0, v1.2.0)
       - name: Publish Official GitHub Release (v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -186,7 +196,7 @@ jobs:
           files: final-dist/*
           generate_release_notes: true
 
-      # Continuous Pre-Release: Clean up obsolete files
+      # Continuous Pre-Release: Clean up obsolete files from previous runs
       - name: Clean Up Old Assets from 'latest' Release
         if: "!startsWith(github.ref, 'refs/tags/v')"
         env:
@@ -202,16 +212,15 @@ jobs:
             done
           fi
 
-      # Standardize latest filenames for clear user experience
-      - name: Standardize Latest Release File Names
+      # For latest pre-release, keep only the universal files
+      - name: Keep only universal filenames for Latest Pre-Release
         if: "!startsWith(github.ref, 'refs/tags/v')"
         run: |
-          cd final-dist
-          for f in *windows*.zip; do [ -f "$f" ] && mv "$f" briefly-windows-portable.zip; done
-          for f in *.deb; do [ -f "$f" ] && mv "$f" briefly-linux-latest.deb; done
-          for f in *linux*.tar.gz; do [ -f "$f" ] && mv "$f" briefly-linux-portable.tar.gz; done
-          echo "Final assets to upload:"
-          ls -la
+          mkdir -p latest-dist
+          cp final-dist/briefly-windows-portable.zip latest-dist/ 2>/dev/null || true
+          cp final-dist/briefly-linux.deb latest-dist/ 2>/dev/null || true
+          cp final-dist/briefly-linux-portable.tar.gz latest-dist/ 2>/dev/null || true
+          ls -la latest-dist/
 
       - name: Publish Clean Latest Pre-Release
         if: "!startsWith(github.ref, 'refs/tags/v')"
@@ -225,9 +234,9 @@ jobs:
 
             **Downloads:**
             - **Windows (10/11)**: `briefly-windows-portable.zip` (Extract & run `Briefly.exe`)
-            - **Debian / Ubuntu / Mint**: `briefly-linux-latest.deb`
+            - **Debian / Ubuntu / Mint**: `briefly-linux.deb`
             - **Universal Linux**: `briefly-linux-portable.tar.gz`
 
             *This pre-release automatically cleans old builds on every update to keep only the latest files.*
           prerelease: true
-          files: final-dist/*
+          files: latest-dist/*
