@@ -1,42 +1,62 @@
 # 🎙️ Briefly
 
 [![Linux](https://img.shields.io/badge/OS-Linux-FCC624?logo=linux&logoColor=black)](https://github.com)
+[![Windows](https://img.shields.io/badge/OS-Windows%2010%2F11-0078D6?logo=windows&logoColor=white)](https://github.com)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://python.org)
 [![Qt6](https://img.shields.io/badge/GUI-PySide6%20%2F%20Qt6-41CD52?logo=qt&logoColor=white)](https://qt.io)
 [![Whisper](https://img.shields.io/badge/AI-OpenAI%20Whisper-brightgreen)](https://github.com/openai/whisper)
 [![Ollama](https://img.shields.io/badge/LLM-Ollama%20Local-orange)](https://ollama.ai)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-> **Briefly** is an intelligent, privacy-first native Linux desktop app that records online meetings (capturing both other participants and your microphone), generates high-fidelity offline transcriptions with **OpenAI Whisper** (GPU-accelerated via NVIDIA CUDA), and crafts structured executive summaries using local LLMs via **Ollama** (`qwen2.5:7b`).
+> **Briefly** is an intelligent, privacy-first cross-platform desktop app for **Linux** and **Windows** that records online meetings (capturing both other participants and your microphone), generates high-fidelity offline transcriptions with **OpenAI Whisper**, and crafts structured executive summaries using local LLMs via **Ollama**.
 
 ---
 
 ## ✨ Features
 
-- 🎧 **Smart Audio Mixing**: Seamlessly records call audio (system monitor/headphones) and your microphone via PulseAudio / PipeWire, mixed into normalized 16 kHz mono with peak limiting.
+- 🎧 **Smart Audio Mixing**: 
+  - **Linux**: Captures system monitor/headphones & microphone via PulseAudio / PipeWire.
+  - **Windows**: Captures speaker/headphone output via native **WASAPI Loopback** & microphone without requiring Stereo Mix or virtual audio cables.
+  - Mixed into normalized 16 kHz mono with peak limiting.
+- 🌐 **Multilingual Support (Input & Output)**:
+  - **Spoken Language**: Auto-detection or explicit selection (English, Portuguese, Spanish, French, German, Italian, etc.) for Whisper speech-to-text.
+  - **Summary Output**: Generate summaries natively translated into your preferred business language with localized section titles, action item tables, and executive terminology.
+- 💻 **Hardware Profile & GPU Acceleration**:
+  - Automatically detects **NVIDIA CUDA**, **AMD ROCm**, or **CPU / Integrated Graphics**.
+  - Recommends optimal Whisper and Ollama models tailored to your machine's VRAM and RAM.
+- 📥 **In-App 1-Click Dependency Installer**:
+  - Missing FFmpeg? Download a portable static FFmpeg binary directly from the app without root/admin privileges.
+  - Pull Ollama models with a live progress bar and transfer speed indicator directly in the diagnostics window.
 - 🚀 **System Tray Daemon**: Start, pause, or stop recordings with a single click even when the window is hidden during Google Meet, Zoom, Teams, or Discord calls.
-- 🩺 **Built-in System Diagnostics**: Automatic health check verifying FFmpeg, PipeWire/PulseAudio devices, PyTorch/CUDA readiness, and Ollama service connectivity with one-click fix suggestions.
+- 🩺 **Built-in System Diagnostics**: Automatic health check verifying audio devices, FFmpeg, PyTorch/GPU readiness, and Ollama service connectivity.
 - 🔒 **100% Offline & Private**: Audio processing, transcription, and summarization never leave your machine — no subscriptions, no cloud uploads.
 - 📋 **Executive Markdown Summaries**: Structured notes including Executive Summary, Key Discussion Points, Confirmed Decisions, Action Items table (Task, Owner, Deadline, Evidence), and Risks/Open Questions. Copy to clipboard in 1 click for Notion, Obsidian, Slack, or Docs.
-- ⚙️ **Configurable AI Models**: Switch between Whisper models (`tiny`, `base`, `small`, `medium`, `large-v3`, `turbo`) and Ollama models with customizable system prompts.
 
 ---
 
-## 📦 Installation Options
+## 📦 Installation & Downloads
 
-### Option 1: Debian/Ubuntu Package (`.deb`) — Recommended for Ubuntu, Debian, Mint, Pop!_OS
+Pre-built binaries are available under the [Releases](https://github.com/johnnyrockoff/briefly/releases) tab (or download continuous builds from the `latest` tag).
 
-Download the `.deb` file from the [GitHub Releases](https://github.com/johnnyrockoff/briefly/releases) tab and install:
+### 🪟 Windows (10 / 11)
+1. Download `briefly-*-windows-portable.zip` from [Releases](https://github.com/johnnyrockoff/briefly/releases).
+2. Extract the ZIP anywhere on your system.
+3. Run `Briefly.exe`.
+*(On first launch, Briefly will detect if FFmpeg or Ollama are missing and offer to install/configure them with 1 click).*
+
+---
+
+### 🐧 Linux
+
+#### Option 1: Debian/Ubuntu Package (`.deb`)
+Recommended for Ubuntu, Debian, Linux Mint, Pop!_OS:
 ```bash
-sudo dpkg -i briefly_1.0.0_all.deb
-sudo apt-get install -f   # Installs missing system dependencies if needed
+sudo dpkg -i briefly_*_all.deb
+sudo apt-get install -f   # Installs system dependencies if needed
 ```
 Launch **Briefly** from your application menu or run `briefly` in your terminal.
 
----
-
-### Option 2: Universal Linux Installer (`install.sh`)
-
+#### Option 2: Universal Linux Installer (`install.sh`)
 Works on any Linux distribution (Fedora, Arch Linux, openSUSE, etc.) without requiring root:
 ```bash
 git clone https://github.com/johnnyrockoff/briefly.git
@@ -44,58 +64,53 @@ cd briefly
 ./install.sh
 ```
 
----
-
-### Option 3: Run Directly from Source
-
+#### Option 3: Run Directly from Source
 ```bash
 git clone https://github.com/johnnyrockoff/briefly.git
 cd briefly
 
 # Create virtual environment and install dependencies
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate      # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # Run Briefly
-./run_app.sh
+./run_app.sh                   # On Windows: python run.py
 ```
 
 ---
 
-## 🔧 Prerequisites
+## 🔧 Prerequisites (Optional / Auto-installable)
 
-1. **FFmpeg** (required for audio capture):
-   ```bash
-   # Ubuntu / Debian
-   sudo apt install ffmpeg
+Briefly can automatically configure its dependencies via the in-app **Health Check & Diagnostics** dialog:
 
-   # Fedora
-   sudo dnf install ffmpeg
-
-   # Arch Linux
-   sudo pacman -S ffmpeg
-   ```
-
-2. **Ollama** (for local AI meeting summaries):
-   Install [Ollama](https://ollama.ai) and pull the recommended model:
-   ```bash
-   ollama run qwen2.5:7b
-   ```
+1. **FFmpeg**: Handled automatically in-app, or install via system package manager:
+   - Ubuntu / Debian: `sudo apt install ffmpeg`
+   - Fedora: `sudo dnf install ffmpeg`
+   - Arch Linux: `sudo pacman -S ffmpeg`
+   - Windows: `winget install Gyan.FFmpeg`
+2. **Ollama**:
+   - Install from [ollama.ai](https://ollama.ai).
+   - Briefly will detect Ollama and allow pulling recommended models (`qwen2.5:7b`, `llama3.2`, etc.) directly from the UI.
 
 ---
 
 ## 🛠️ Building Release Packages
 
-To compile installation packages for GitHub Releases:
+### Windows Standalone Executable (`.exe`):
+On Windows with Python 3.10+:
+```bat
+scripts\build_windows.bat
+:: Outputs: dist\Briefly\Briefly.exe and dist\briefly-*-windows-portable.zip
+```
 
-### Build Debian (`.deb`) Package:
+### Linux Debian (`.deb`) Package:
 ```bash
 ./scripts/build_deb.sh 1.0.0
 # Outputs: dist/briefly_1.0.0_all.deb
 ```
 
-### Build Portable (`.tar.gz`) Package:
+### Linux Portable (`.tar.gz`) Package:
 ```bash
 ./scripts/build_tarball.sh 1.0.0
 # Outputs: dist/briefly-1.0.0-linux-portable.tar.gz
