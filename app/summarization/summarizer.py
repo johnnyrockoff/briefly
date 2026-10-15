@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from app.config import SUMMARIES_DIR, config
+from app.config import SUMMARIES_DIR, config, get_effective_system_prompt
 
 
 def get_available_ollama_models(ollama_tags_url: Optional[str] = None) -> List[str]:
@@ -33,7 +33,7 @@ class SummarizerWorker(QObject):
         self.txt_path = Path(txt_path)
         self.model_name = model_name or config.get("ollama_model", "qwen2.5:7b")
         self.api_url = config.get("ollama_url", "http://localhost:11434/api/chat")
-        self.system_prompt = config.get("system_prompt")
+        self.system_prompt = get_effective_system_prompt()
         self.keep_alive = config.get("keep_alive_ollama", 0)
         self.temperature = float(config.get("temperature", 0.2))
         self.num_ctx = int(config.get("num_ctx", 8192))

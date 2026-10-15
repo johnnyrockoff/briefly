@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.config import DEFAULT_SYSTEM_PROMPT, config
+from app.languages import INPUT_LANGUAGES, OUTPUT_LANGUAGES, get_prompt_for_language
 from app.summarization.summarizer import get_available_ollama_models
 
 
@@ -24,7 +25,7 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Settings - Briefly")
-        self.resize(600, 500)
+        self.resize(640, 540)
         self._init_ui()
         self._load_values()
 
@@ -34,7 +35,46 @@ class SettingsDialog(QDialog):
 
         self.tabs = QTabWidget()
 
-        # --- Tab 1: AI Models ---
+        # ==========================================
+        # Tab 1: 🌐 Languages (Input & Output)
+        # ==========================================
+        tab_lang = QWidget()
+        form_lang = QFormLayout(tab_lang)
+        form_lang.setSpacing(14)
+
+        # Spoken Language (Input for Whisper)
+        self.combo_input_lang = QComboBox()
+        for code, label in INPUT_LANGUAGES:
+            self.combo_input_lang.addItem(label, code)
+        form_lang.addRow("🗣️ Meeting Spoken Language (Input):", self.combo_input_lang)
+
+        lbl_hint_in = QLabel("Specifies the language spoken in meetings. Setting a specific language improves Whisper accuracy and eliminates language switching.")
+        lbl_hint_in.setWordWrap(True)
+        lbl_hint_in.setStyleSheet("color: #a5adcb; font-size: 11px;")
+        form_lang.addRow("", lbl_hint_in)
+
+        # Summary Language (Output for Ollama)
+        self.combo_output_lang = QComboBox()
+        for code, label in OUTPUT_LANGUAGES:
+            self.combo_output_lang.addItem(label, code)
+        self.combo_output_lang.currentIndexChanged.connect(self._on_output_lang_changed)
+        form_lang.addRow("📋 Summary Output Language:", self.combo_output_lang)
+
+        lbl_hint_out = QLabel("The language in which AI meeting summaries, executive briefings, and action item tables will be drafted.")
+        lbl_hint_out.setWordWrap(True)
+        lbl_hint_out.setStyleSheet("color: #a5adcb; font-size: 11px;")
+        form_lang.addRow("", lbl_hint_out)
+
+        btn_sync_prompt = QPushButton("Apply Template for Selected Language")
+        btn_sync_prompt.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_sync_prompt.clicked.connect(self._apply_language_prompt_template)
+        form_lang.addRow("", btn_sync_prompt)
+
+        self.tabs.addTab(tab_lang, "🌐 Languages")
+
+        # ==========================================
+        # Tab 2: 🧠 AI Models (Whisper & Ollama)
+        # ==========================================
         tab_ai = QWidget()
         form_ai = QFormLayout(tab_ai)
         form_ai.setSpacing(10)
@@ -73,23 +113,28 @@ class SettingsDialog(QDialog):
 
         self.tabs.addTab(tab_ai, "🧠 AI Models")
 
-        # --- Tab 2: System Prompt ---
+        # ==========================================
+        # Tab 3: 📝 Summary Prompt Editor
+        # ==========================================
         tab_prompt = QWidget()
         layout_prompt = QVBoxLayout(tab_prompt)
-        lbl_p_info = QLabel("Instructions passed to Ollama for summary formatting:")
-        lbl_p_info.setStyleSheet("color: #a6adc8; font-size: 11px;")
+        lbl_p_info = QLabel("Instructions passed to Ollama for structured summary formatting:")
+        lbl_p_info.setStyleSheet("color: #a5adcb; font-size: 11px;")
         layout_prompt.addWidget(lbl_p_info)
 
         self.txt_system_prompt = QTextEdit()
         layout_prompt.addWidget(self.txt_system_prompt)
 
-        btn_reset_prompt = QPushButton("Restore Default Prompt")
-        btn_reset_prompt.clicked.connect(lambda: self.txt_system_prompt.setPlainText(DEFAULT_SYSTEM_PROMPT))
+        btn_reset_prompt = QPushButton("Restore Default Template")
+        btn_reset_prompt.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_reset_prompt.clicked.connect(self._apply_language_prompt_template)
         layout_prompt.addWidget(btn_reset_prompt, 0, Qt.AlignmentFlag.AlignRight)
 
-        self.tabs.addTab(tab_prompt, "📝 Summary Prompt")
+        self.tabs.addTab(tab_prompt, "📝 Prompt Template")
 
-        # --- Tab 3: Automation & System ---
+        # ==========================================
+        # Tab 4: ⚙️ Automation & Window
+        # ==========================================
         tab_system = QWidget()
         layout_sys = QVBoxLayout(tab_system)
         layout_sys.setSpacing(12)
@@ -108,22 +153,35 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(self.tabs)
 
-        # Botões Salvar / Cancelar
+        # Bottom Buttons
         btn_box = QHBoxLayout()
         btn_box.addStretch()
 
         btn_cancel = QPushButton("Cancel")
+        btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_cancel.clicked.connect(self.reject)
         btn_box.addWidget(btn_cancel)
 
         btn_save = QPushButton("Save Settings")
         btn_save.setObjectName("btn_primary_action")
+        btn_save.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_save.clicked.connect(self._save_values)
         btn_box.addWidget(btn_save)
 
         layout.addLayout(btn_box)
 
     def _load_values(self):
+        # Languages
+        saved_in = config.get("input_language", "auto")
+        idx_in = self.combo_input_lang.findData(saved_in)
+        if idx_in >= 0:
+            self.combo_input_lang.setCurrentIndex(idx_in)
+
+        saved_out = config.get("output_language", "pt")
+        idx_out = self.combo_output_lang.findData(saved_out)
+        if idx_out >= 0:
+            self.combo_output_lang.setCurrentIndex(idx_out)
+
         # Whisper
         cur_whisper = config.get("whisper_model", "small")
         idx_w = self.combo_whisper_model.findText(cur_whisper)
@@ -161,7 +219,17 @@ class SettingsDialog(QDialog):
         else:
             self.combo_ollama_model.setEditText(cur_model)
 
+    def _on_output_lang_changed(self, index: int):
+        pass
+
+    def _apply_language_prompt_template(self):
+        target_lang = self.combo_output_lang.currentData() or "pt"
+        template = get_prompt_for_language(target_lang)
+        self.txt_system_prompt.setPlainText(template)
+
     def _save_values(self):
+        config.set("input_language", self.combo_input_lang.currentData())
+        config.set("output_language", self.combo_output_lang.currentData())
         config.set("whisper_model", self.combo_whisper_model.currentText())
         config.set("whisper_device", self.combo_whisper_device.currentData())
         config.set("ollama_url", self.txt_ollama_url.text().strip())

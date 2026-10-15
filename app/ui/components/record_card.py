@@ -16,18 +16,21 @@ from app.audio.devices import (
     list_sinks,
 )
 from app.config import config
+from app.languages import INPUT_LANGUAGES, OUTPUT_LANGUAGES
 
 
 class RecordCard(QFrame):
     start_requested = Signal()
     stop_requested = Signal()
     devices_changed = Signal()
+    languages_changed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("card_frame")
         self._init_ui()
         self.refresh_devices()
+        self.refresh_languages()
         self.set_recording_state(False)
 
     def _init_ui(self):
@@ -95,6 +98,36 @@ class RecordCard(QFrame):
         self.combo_mic.currentIndexChanged.connect(self._on_mic_changed)
         dev_container.addWidget(self.combo_mic)
 
+        # Seletores Rápidos de Idioma (Entrada / Saída)
+        lang_box = QHBoxLayout()
+        lang_box.setSpacing(8)
+
+        v_in = QVBoxLayout()
+        v_in.setSpacing(4)
+        lbl_in = QLabel("🗣️ Spoken Language:")
+        lbl_in.setObjectName("lbl_field_header")
+        self.combo_input_lang = QComboBox()
+        for code, label in INPUT_LANGUAGES:
+            self.combo_input_lang.addItem(label, code)
+        self.combo_input_lang.currentIndexChanged.connect(self._on_input_lang_changed)
+        v_in.addWidget(lbl_in)
+        v_in.addWidget(self.combo_input_lang)
+        lang_box.addLayout(v_in, 1)
+
+        v_out = QVBoxLayout()
+        v_out.setSpacing(4)
+        lbl_out = QLabel("📋 Summary Output:")
+        lbl_out.setObjectName("lbl_field_header")
+        self.combo_output_lang = QComboBox()
+        for code, label in OUTPUT_LANGUAGES:
+            self.combo_output_lang.addItem(label, code)
+        self.combo_output_lang.currentIndexChanged.connect(self._on_output_lang_changed)
+        v_out.addWidget(lbl_out)
+        v_out.addWidget(self.combo_output_lang)
+        lang_box.addLayout(v_out, 1)
+
+        dev_container.addLayout(lang_box)
+
         layout.addLayout(dev_container)
 
     def refresh_devices(self):
@@ -138,6 +171,24 @@ class RecordCard(QFrame):
         self.combo_monitor.blockSignals(False)
         self.combo_mic.blockSignals(False)
 
+    def refresh_languages(self):
+        self.combo_input_lang.blockSignals(True)
+        self.combo_output_lang.blockSignals(True)
+
+        saved_in = config.get("input_language", "auto")
+        saved_out = config.get("output_language", "pt")
+
+        idx_in = self.combo_input_lang.findData(saved_in)
+        if idx_in >= 0:
+            self.combo_input_lang.setCurrentIndex(idx_in)
+
+        idx_out = self.combo_output_lang.findData(saved_out)
+        if idx_out >= 0:
+            self.combo_output_lang.setCurrentIndex(idx_out)
+
+        self.combo_input_lang.blockSignals(False)
+        self.combo_output_lang.blockSignals(False)
+
     def _on_monitor_changed(self, index: int):
         val = self.combo_monitor.currentData()
         config.set("selected_monitor", val)
@@ -147,6 +198,16 @@ class RecordCard(QFrame):
         val = self.combo_mic.currentData()
         config.set("selected_mic", val)
         self.devices_changed.emit()
+
+    def _on_input_lang_changed(self, index: int):
+        val = self.combo_input_lang.currentData()
+        config.set("input_language", val)
+        self.languages_changed.emit()
+
+    def _on_output_lang_changed(self, index: int):
+        val = self.combo_output_lang.currentData()
+        config.set("output_language", val)
+        self.languages_changed.emit()
 
     def _toggle_recording(self):
         if self.btn_record.objectName() == "btn_record_start":
@@ -167,6 +228,8 @@ class RecordCard(QFrame):
             self.lbl_timer.setObjectName("lbl_timer_recording")
             self.combo_monitor.setEnabled(False)
             self.combo_mic.setEnabled(False)
+            self.combo_input_lang.setEnabled(False)
+            self.combo_output_lang.setEnabled(False)
         else:
             self.btn_record.setObjectName("btn_record_start")
             self.btn_record.setText("▶ Start Recording")
@@ -180,6 +243,8 @@ class RecordCard(QFrame):
             self.lbl_timer.setText("00:00:00")
             self.combo_monitor.setEnabled(True)
             self.combo_mic.setEnabled(True)
+            self.combo_input_lang.setEnabled(True)
+            self.combo_output_lang.setEnabled(True)
 
         self.lbl_timer.style().unpolish(self.lbl_timer)
         self.lbl_timer.style().polish(self.lbl_timer)

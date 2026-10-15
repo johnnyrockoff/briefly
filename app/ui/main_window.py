@@ -307,6 +307,7 @@ class MainWindow(QMainWindow):
         dlg = SettingsDialog(self)
         if dlg.exec():
             self.record_card.refresh_devices()
+            self.record_card.refresh_languages()
             self.status_bar.showMessage("Settings updated.")
             self._check_system_health()
 

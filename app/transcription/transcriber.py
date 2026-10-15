@@ -36,8 +36,14 @@ class TranscriptionWorker(QObject):
 
             model = whisper.load_model(self.model_name, device=target_device)
 
-            self.progress.emit(f"Transcribing {self.wav_path.name}...")
-            result = model.transcribe(str(self.wav_path), verbose=False)
+            kwargs = {"verbose": False}
+            lang = config.get("input_language", "auto")
+            if lang and lang != "auto":
+                kwargs["language"] = lang
+
+            lang_label = lang.upper() if lang != "auto" else "Auto-detect"
+            self.progress.emit(f"Transcribing {self.wav_path.name} (Spoken: {lang_label})...")
+            result = model.transcribe(str(self.wav_path), **kwargs)
 
             TRANSCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
             txt_path = TRANSCRIPTS_DIR / f"{self.wav_path.stem}.txt"
