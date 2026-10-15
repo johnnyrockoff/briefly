@@ -195,9 +195,11 @@ class MeetingsList(QWidget):
 
         self.list_widget.blockSignals(False)
 
-        # Reselect first if items exist
+        # Reselect first if items exist, or clear viewer if list is empty
         if self.list_widget.count() > 0:
             self.list_widget.setCurrentRow(0)
+        else:
+            self.meeting_selected.emit("")
 
     def _filter_list(self, query: str):
         query = query.strip().lower()
@@ -212,6 +214,8 @@ class MeetingsList(QWidget):
             stem = current_item.data(Qt.ItemDataRole.UserRole)
             if stem:
                 self.meeting_selected.emit(stem)
+                return
+        self.meeting_selected.emit("")
 
     def get_first_stem(self) -> Optional[str]:
         if self.list_widget.count() > 0:

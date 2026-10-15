@@ -108,7 +108,11 @@ class MeetingViewer(QWidget):
 
         layout.addWidget(self.tabs)
 
-    def load_meeting(self, stem: str):
+    def load_meeting(self, stem: Optional[str]):
+        if not stem:
+            self.clear()
+            return
+
         self.current_stem = stem
 
         # Formatted title
@@ -174,6 +178,8 @@ class MeetingViewer(QWidget):
     def clear(self):
         self.current_stem = None
         self.lbl_title.setText("Select a Meeting")
+        self.lbl_status.hide()
+        self.progress_bar.hide()
         self.btn_transcribe.setEnabled(False)
         self.btn_summarize.setEnabled(False)
         self.btn_copy_markdown.setEnabled(False)
@@ -183,9 +189,10 @@ class MeetingViewer(QWidget):
         self.edit_raw_markdown.setPlainText("")
         self.edit_raw_markdown.blockSignals(False)
         self.browser_summary.setHtml(
-            f"{MARKDOWN_HTML_STYLE}<div style='padding: 24px; text-align: center; color: #a5adcb;'>"
-            f"<h3 style='color: #8aadf4;'>No Meeting Selected</h3>"
-            f"<p>Select a meeting from the list or start a new recording.</p></div>"
+            f"{MARKDOWN_HTML_STYLE}<div style='padding: 32px; text-align: center; color: #a5adcb;'>"
+            f"<h3 style='color: #8aadf4; font-size: 16px;'>No Meeting Selected</h3>"
+            f"<p style='margin-top: 8px;'>All captures have been removed or no meeting is currently selected.<br>"
+            f"Click <b>'Start Recording'</b> to capture a new meeting.</p></div>"
         )
 
     def set_processing_status(self, message: str, in_progress: bool = True):
