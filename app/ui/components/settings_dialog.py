@@ -176,6 +176,11 @@ class SettingsDialog(QDialog):
         self.combo_whisper_device.addItem("Processor (CPU)", "cpu")
         form_ai.addRow("Execution Device:", self.combo_whisper_device)
 
+        # Speaker Diarization Checkbox
+        self.chk_diarization = QCheckBox("Identify speakers (Diarization: Interlocutor 1, 2...)")
+        self.chk_diarization.setToolTip("Uses neural voice clustering (Sherpa-ONNX) to distinguish different speakers in the meeting.")
+        form_ai.addRow("Speaker Identification:", self.chk_diarization)
+
         # Ollama URL
         self.txt_ollama_url = QLineEdit()
         form_ai.addRow("Ollama URL:", self.txt_ollama_url)
@@ -323,6 +328,7 @@ class SettingsDialog(QDialog):
         self.txt_system_prompt.setPlainText(saved_prompt)
 
         # Checkboxes
+        self.chk_diarization.setChecked(bool(config.get("enable_diarization", True)))
         self.chk_auto_transcribe.setChecked(bool(config.get("auto_transcribe", True)))
         self.chk_auto_summarize.setChecked(bool(config.get("auto_summarize", True)))
         self.chk_minimize_tray.setChecked(bool(config.get("minimize_to_tray_on_close", True)))
@@ -368,6 +374,7 @@ class SettingsDialog(QDialog):
         config.set("output_language", self.combo_output_lang.currentData())
         config.set("whisper_model", self.combo_whisper_model.currentText())
         config.set("whisper_device", self.combo_whisper_device.currentData())
+        config.set("enable_diarization", self.chk_diarization.isChecked())
         config.set("ollama_url", self.txt_ollama_url.text().strip())
         config.set("ollama_model", self.combo_ollama_model.currentText().strip())
         config.set("num_ctx", self.spin_num_ctx.value())

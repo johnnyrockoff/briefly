@@ -59,24 +59,46 @@ class TranscriptionWorker(QObject):
             self.progress.emit(f"Transcribing {self.wav_path.name} (Model: {self.model_name}, Spoken: {lang_label})...")
             result = model.transcribe(str(self.wav_path), **kwargs)
 
+            # Libera memória GPU/RAM antes da etapa de diarização
+            del model
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+
+            final_text = result["text"].strip()
+
+            # Diarização neural de múltiplos interlocutores
+            if config.get("enable_diarization", True):
+                try:
+                    from app.transcription.diarizer import (
+                        diarize_audio,
+                        format_annotated_transcript,
+                        merge_whisper_and_diarization,
+                    )
+                    raw_segments = result.get("segments", [])
+                    if raw_segments:
+                        self.progress.emit("Identificando múltiplos interlocutores (Diarização de voz)...")
+                        diar_segments = diarize_audio(str(self.wav_path), progress_callback=self.progress.emit)
+                        if diar_segments:
+                            annotated = merge_whisper_and_diarization(raw_segments, diar_segments)
+                            diarized_text = format_annotated_transcript(annotated)
+                            if diarized_text.strip():
+                                final_text = diarized_text
+                except Exception as d_err:
+                    print(f"Warning: Diarization skipped: {d_err}")
+
             t_dir = get_transcripts_dir()
             t_dir.mkdir(parents=True, exist_ok=True)
             txt_path = t_dir / f"{self.wav_path.stem}.txt"
-            txt_path.write_text(result["text"].strip(), encoding="utf-8")
+            txt_path.write_text(final_text, encoding="utf-8")
 
-            # Salva também vtt/srt se o usuário quiser detalhes temporais futuramente
+            # Salva também vtt se o usuário quiser detalhes temporais futuramente
             try:
                 from whisper.utils import get_writer
                 writer = get_writer("vtt", str(t_dir))
                 writer(result, str(self.wav_path))
             except Exception:
                 pass
-
-            # Libera memória GPU/RAM
-            del model
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            gc.collect()
 
             self.progress.emit("Transcription completed successfully.")
             self.finished.emit(str(self.wav_path), str(txt_path))

@@ -37,6 +37,9 @@ Click below to download the latest stable release for your operating system (lin
   - GPU-accelerated speech recognition powered by OpenAI's **Whisper Turbo** model.
   - **Beam Search Decoding** (`beam_size=5`, `best_of=5`) and hallucination suppression.
   - **Domain-Specific Vocabulary Prompting**: Pre-conditions Whisper with technical and corporate terminology (*deploy, sprint, pull request, pipeline, backlog*) and clear punctuation.
+- 👥 **Neural Speaker Diarization (Multi-Speaker Attribution)**:
+  - Automatically identifies and distinguishes different participants across the call (`[00:01:23] Interlocutor 1: ...`, `[00:01:45] Interlocutor 2: ...`).
+  - Powered by offline neural voice clustering via **Sherpa-ONNX & 3D-Speaker** — 100% private, local, and requiring zero external API keys or tokens.
 - 📂 **Custom Storage Directory**:
   - Full control over where meeting data is saved: choose any custom directory (local SSD, secondary drive, or synced folder like Nextcloud, Dropbox, or Google Drive) directly in Settings.
   - Automatically manages subfolders for `recordings/`, `transcripts/`, and `summaries/`.

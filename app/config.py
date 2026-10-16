@@ -69,6 +69,9 @@ else:
     CONFIG_DIR = Path.home() / ".config" / "briefly"
     LOCAL_BIN_DIR = Path.home() / ".local" / "share" / "briefly" / "bin"
 
+MODELS_DIR = LOCAL_BIN_DIR.parent / "models"
+MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
 LOCAL_BIN_DIR.mkdir(parents=True, exist_ok=True)
 str_bin = str(LOCAL_BIN_DIR)
 if str_bin not in os.environ.get("PATH", ""):
@@ -91,6 +94,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "whisper_device": "cuda",
     "input_language": "auto",       # Spoken language: 'auto', 'pt', 'en', 'es', etc.
     "output_language": "pt",      # Summary output language: 'pt', 'en', 'es', etc.
+    "enable_diarization": True,    # Neural speaker diarization (Interlocutor 1, 2...)
     "ollama_url": "http://localhost:11434/api/chat",
     "ollama_tags_url": "http://localhost:11434/api/tags",
     "ollama_model": "qwen2.5:7b",
