@@ -29,21 +29,29 @@ Click below to download the latest stable release for your operating system (lin
 
 ## ✨ Features
 
-- 🎧 **Smart Audio Mixing**: 
+- 🎧 **Smart Audio Mixing & Dynamic Normalization**: 
   - **Linux**: Captures system monitor/headphones & microphone via PulseAudio / PipeWire.
   - **Windows**: Captures speaker/headphone output via native **WASAPI Loopback** & microphone without requiring Stereo Mix or virtual audio cables.
-  - Mixed into normalized 16 kHz mono with peak limiting.
+  - **Dynamic Audio Normalization (`dynaudnorm` + `alimiter`)**: Automatically balances quiet remote speakers and local microphone levels into a clean, normalized 16 kHz mono stream.
+- ⚡ **Whisper Turbo & High-Fidelity Decoding**:
+  - GPU-accelerated speech recognition powered by OpenAI's **Whisper Turbo** model.
+  - **Beam Search Decoding** (`beam_size=5`, `best_of=5`) and hallucination suppression.
+  - **Domain-Specific Vocabulary Prompting**: Pre-conditions Whisper with technical and corporate terminology (*deploy, sprint, pull request, pipeline, backlog*) and clear punctuation.
+- 📂 **Custom Storage Directory**:
+  - Full control over where meeting data is saved: choose any custom directory (local SSD, secondary drive, or synced folder like Nextcloud, Dropbox, or Google Drive) directly in Settings.
+  - Automatically manages subfolders for `recordings/`, `transcripts/`, and `summaries/`.
 - 🌐 **Multilingual Support (Input & Output)**:
   - **Spoken Language**: Auto-detection or explicit selection (English, Portuguese, Spanish, French, German, Italian, etc.) for Whisper speech-to-text.
   - **Summary Output**: Generate summaries natively translated into your preferred business language with localized section titles, action item tables, and executive terminology.
 - 💻 **Hardware Profile & GPU Acceleration**:
   - Automatically detects **NVIDIA CUDA**, **AMD ROCm**, or **CPU / Integrated Graphics**.
-  - Recommends optimal Whisper and Ollama models tailored to your machine's VRAM and RAM.
+  - Recommends optimal Whisper models (`turbo` for GPU, `base` for CPU) and Ollama models tailored to your machine's VRAM and RAM.
 - 📥 **In-App 1-Click Dependency Installer**:
   - Missing FFmpeg? Download a portable static FFmpeg binary directly from the app without root/admin privileges.
   - Pull Ollama models with a live progress bar and transfer speed indicator directly in the diagnostics window.
 - 🚀 **System Tray Daemon**: Start, pause, or stop recordings with a single click even when the window is hidden during Google Meet, Zoom, Teams, or Discord calls.
 - 🩺 **Built-in System Diagnostics**: Automatic health check verifying audio devices, FFmpeg, PyTorch/GPU readiness, and Ollama service connectivity.
+- 🔄 **Live History & File Synchronization**: Instantly syncs meeting records when files are removed, showing clean empty states when no recordings are present.
 - 🔒 **100% Offline & Private**: Audio processing, transcription, and summarization never leave your machine — no subscriptions, no cloud uploads.
 - 📋 **Executive Markdown Summaries**: Structured notes including Executive Summary, Key Discussion Points, Confirmed Decisions, Action Items table (Task, Owner, Deadline, Evidence), and Risks/Open Questions. Copy to clipboard in 1 click for Notion, Obsidian, Slack, or Docs.
 
