@@ -140,6 +140,57 @@ Use a table: Task | Owner | Deadline | Evidence / Context.
 }
 
 
+LEGACY_PROMPT_SIGNATURES: List[str] = [
+    "You summarize technical meeting transcripts accurately",
+    "Write in Portuguese (or the primary language spoken)",
+    "Write in English with this exact Markdown structure",
+]
+
+USER_PROMPTS_BY_LANGUAGE: Dict[str, str] = {
+    "pt": (
+        "Por favor, elabore um resumo executivo estruturado da seguinte transcrição de reunião ({filename}) "
+        "seguindo rigorosamente as diretrizes e o formato definidos no sistema:\n\n"
+        "<transcript>\n{transcript}\n</transcript>"
+    ),
+    "en": (
+        "Please provide a structured executive summary of the following meeting transcript ({filename}) "
+        "following the system instructions and Markdown format:\n\n"
+        "<transcript>\n{transcript}\n</transcript>"
+    ),
+    "es": (
+        "Por favor, elabora un resumen ejecutivo estructurado de la siguiente transcripción de la reunión ({filename}) "
+        "siguiendo las directrices e instrucciones del sistema:\n\n"
+        "<transcript>\n{transcript}\n</transcript>"
+    ),
+    "fr": (
+        "Veuillez rédiger un compte-rendu exécutif structuré de la transcription de réunion suivante ({filename}) "
+        "en suivant rigoureusement les directives du système :\n\n"
+        "<transcript>\n{transcript}\n</transcript>"
+    ),
+    "de": (
+        "Bitte erstellen Sie eine strukturierte Management-Zusammenfassung des folgenden Besprechungstranskripts ({filename}) "
+        "gemäß den Systemanweisungen:\n\n"
+        "<transcript>\n{transcript}\n</transcript>"
+    ),
+    "it": (
+        "Per favore, redigi un verbale esecutivo strutturato della seguente trascrizione della riunione ({filename}) "
+        "seguendo rigorosamente le istruzioni del sistema:\n\n"
+        "<transcript>\n{transcript}\n</transcript>"
+    ),
+    "auto": (
+        "Please provide a structured executive summary of the following meeting transcript ({filename}) "
+        "in the exact same language as spoken in the transcript:\n\n"
+        "<transcript>\n{transcript}\n</transcript>"
+    ),
+}
+
+
 def get_prompt_for_language(lang_code: str) -> str:
     """Returns standard system prompt tailored for target output language."""
     return PROMPTS_BY_LANGUAGE.get(lang_code, PROMPTS_BY_LANGUAGE["pt"])
+
+
+def get_user_request_for_language(lang_code: str, filename: str, transcript: str) -> str:
+    """Returns localized user message payload sent to Ollama."""
+    template = USER_PROMPTS_BY_LANGUAGE.get(lang_code, USER_PROMPTS_BY_LANGUAGE["pt"])
+    return template.format(filename=filename, transcript=transcript)

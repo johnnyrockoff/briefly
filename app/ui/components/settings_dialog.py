@@ -316,7 +316,11 @@ class SettingsDialog(QDialog):
         self._refresh_ollama_models()
 
         # Prompt
-        self.txt_system_prompt.setPlainText(config.get("system_prompt", DEFAULT_SYSTEM_PROMPT))
+        saved_prompt = config.get("system_prompt", DEFAULT_SYSTEM_PROMPT).strip()
+        from app.languages import LEGACY_PROMPT_SIGNATURES
+        if any(sig in saved_prompt for sig in LEGACY_PROMPT_SIGNATURES):
+            saved_prompt = get_prompt_for_language(saved_out)
+        self.txt_system_prompt.setPlainText(saved_prompt)
 
         # Checkboxes
         self.chk_auto_transcribe.setChecked(bool(config.get("auto_transcribe", True)))
@@ -336,7 +340,15 @@ class SettingsDialog(QDialog):
             self.combo_ollama_model.setEditText(cur_model)
 
     def _on_output_lang_changed(self, index: int):
-        pass
+        target_lang = self.combo_output_lang.currentData() or "pt"
+        cur_prompt = self.txt_system_prompt.toPlainText().strip()
+        from app.languages import LEGACY_PROMPT_SIGNATURES, PROMPTS_BY_LANGUAGE
+        if (
+            not cur_prompt
+            or any(cur_prompt == p.strip() for p in PROMPTS_BY_LANGUAGE.values())
+            or any(sig in cur_prompt for sig in LEGACY_PROMPT_SIGNATURES)
+        ):
+            self.txt_system_prompt.setPlainText(get_prompt_for_language(target_lang))
 
     def _apply_language_prompt_template(self):
         target_lang = self.combo_output_lang.currentData() or "pt"

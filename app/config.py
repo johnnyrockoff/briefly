@@ -77,7 +77,11 @@ if str_bin not in os.environ.get("PATH", ""):
 LEGACY_CONFIG_FILE = Path.home() / ".config" / "meeting-notes" / "config.json"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
-from app.languages import PROMPTS_BY_LANGUAGE, get_prompt_for_language
+from app.languages import (
+    LEGACY_PROMPT_SIGNATURES,
+    PROMPTS_BY_LANGUAGE,
+    get_prompt_for_language,
+)
 
 DEFAULT_SYSTEM_PROMPT = PROMPTS_BY_LANGUAGE["pt"]
 
@@ -108,8 +112,13 @@ def get_effective_system_prompt() -> str:
     out_lang = config.get("output_language", "pt")
     default_for_lang = get_prompt_for_language(out_lang).strip()
 
-    # If user hasn't customized the prompt or it matches any standard prompt, use the target language prompt
-    if not saved_prompt or any(saved_prompt == p.strip() for p in PROMPTS_BY_LANGUAGE.values()):
+    # If user hasn't customized the prompt, or it matches any standard prompt,
+    # or it is an old legacy mixed prompt, use the clean target language prompt
+    if (
+        not saved_prompt
+        or any(saved_prompt == p.strip() for p in PROMPTS_BY_LANGUAGE.values())
+        or any(sig in saved_prompt for sig in LEGACY_PROMPT_SIGNATURES)
+    ):
         return default_for_lang
 
     return saved_prompt
@@ -133,6 +142,13 @@ class ConfigManager:
                     self.data.update(loaded)
             except Exception as e:
                 print(f"Error loading configuration: {e}")
+
+        # Automatic migration from legacy mixed prompts
+        cur_p = self.data.get("system_prompt", "")
+        if cur_p and any(sig in cur_p for sig in LEGACY_PROMPT_SIGNATURES):
+            self.data["system_prompt"] = get_prompt_for_language(self.data.get("output_language", "pt"))
+            self.save()
+
         sync_storage_globals()
 
     def save(self) -> None:

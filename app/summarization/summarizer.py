@@ -51,6 +51,10 @@ class SummarizerWorker(QObject):
 
             self.progress.emit(f"Sending transcript to Ollama ({self.model_name})...")
 
+            from app.languages import get_user_request_for_language
+            out_lang = config.get("output_language", "pt")
+            user_content = get_user_request_for_language(out_lang, self.txt_path.name, transcript)
+
             payload = {
                 "model": self.model_name,
                 "stream": True,
@@ -58,10 +62,7 @@ class SummarizerWorker(QObject):
                     {"role": "system", "content": self.system_prompt},
                     {
                         "role": "user",
-                        "content": (
-                            f"Summarize this meeting transcript from {self.txt_path.name}.\n"
-                            f"<transcript>\n{transcript}\n</transcript>"
-                        ),
+                        "content": user_content,
                     },
                 ],
                 "options": {
