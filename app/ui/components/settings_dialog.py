@@ -299,7 +299,7 @@ class SettingsDialog(QDialog):
             self.combo_output_lang.setCurrentIndex(idx_out)
 
         # Whisper
-        cur_whisper = config.get("whisper_model", "small")
+        cur_whisper = config.get("whisper_model", "turbo")
         idx_w = self.combo_whisper_model.findText(cur_whisper)
         if idx_w >= 0:
             self.combo_whisper_model.setCurrentIndex(idx_w)

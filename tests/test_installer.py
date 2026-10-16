@@ -23,7 +23,7 @@ def test_hardware_detection_gpu_profile():
     with mock_torch, mock_device:
         hw = detect_system_hardware()
         assert hw["has_gpu"] is True
-        assert hw["recommended_whisper"] == "small"
+        assert hw["recommended_whisper"] == "turbo"
         assert hw["recommended_ollama"] == "qwen2.5:7b"
 
 

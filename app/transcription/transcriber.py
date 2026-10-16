@@ -15,7 +15,7 @@ class TranscriptionWorker(QObject):
     def __init__(self, wav_path: str, model_name: Optional[str] = None, device: Optional[str] = None):
         super().__init__()
         self.wav_path = Path(wav_path)
-        self.model_name = model_name or config.get("whisper_model", "small")
+        self.model_name = model_name or config.get("whisper_model", "turbo")
         self.device = device or config.get("whisper_device", "cuda")
 
     def run(self):
@@ -36,13 +36,27 @@ class TranscriptionWorker(QObject):
 
             model = whisper.load_model(self.model_name, device=target_device)
 
-            kwargs = {"verbose": False}
+            from app.languages import get_transcription_initial_prompt
+
             lang = config.get("input_language", "auto")
+            initial_prompt = get_transcription_initial_prompt(lang)
+
+            kwargs = {
+                "verbose": False,
+                "beam_size": 5,
+                "best_of": 5,
+                "temperature": (0.0, 0.2),
+                "condition_on_previous_text": False,
+                "compression_ratio_threshold": 2.4,
+                "no_speech_threshold": 0.6,
+                "initial_prompt": initial_prompt,
+                "fp16": (target_device == "cuda"),
+            }
             if lang and lang != "auto":
                 kwargs["language"] = lang
 
             lang_label = lang.upper() if lang != "auto" else "Auto-detect"
-            self.progress.emit(f"Transcribing {self.wav_path.name} (Spoken: {lang_label})...")
+            self.progress.emit(f"Transcribing {self.wav_path.name} (Model: {self.model_name}, Spoken: {lang_label})...")
             result = model.transcribe(str(self.wav_path), **kwargs)
 
             t_dir = get_transcripts_dir()

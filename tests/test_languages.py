@@ -87,3 +87,18 @@ def test_effective_system_prompt_cleans_legacy_hybrid_prompt():
     en_req = get_user_request_for_language("en", "call.txt", "Test text")
     assert "structured executive summary" in en_req
 
+
+def test_transcription_initial_prompts():
+    from app.languages import get_transcription_initial_prompt
+
+    pt_prompt = get_transcription_initial_prompt("pt")
+    assert "Reunião corporativa" in pt_prompt
+    assert "deploy" in pt_prompt
+    assert "sprint" in pt_prompt
+
+    en_prompt = get_transcription_initial_prompt("en")
+    assert "Corporate alignment meeting" in en_prompt
+
+    auto_prompt = get_transcription_initial_prompt("auto")
+    assert "deliverables" in auto_prompt
+

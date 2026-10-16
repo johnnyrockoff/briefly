@@ -8,9 +8,10 @@ from app.config import ConfigManager, DEFAULT_CONFIG
 def test_config_defaults():
     with tempfile.TemporaryDirectory() as tmpdir:
         fake_cfg_file = Path(tmpdir) / "config.json"
-        with patch("app.config.CONFIG_FILE", fake_cfg_file):
+        fake_legacy = Path(tmpdir) / "legacy.json"
+        with patch("app.config.CONFIG_FILE", fake_cfg_file), patch("app.config.LEGACY_CONFIG_FILE", fake_legacy):
             cm = ConfigManager()
-            assert cm.get("whisper_model") == "small"
+            assert cm.get("whisper_model") == "turbo"
             assert cm.get("ollama_model") == "qwen2.5:7b"
             assert cm.get("auto_transcribe") is True
 
@@ -18,7 +19,8 @@ def test_config_defaults():
 def test_config_save_and_reload():
     with tempfile.TemporaryDirectory() as tmpdir:
         fake_cfg_file = Path(tmpdir) / "config.json"
-        with patch("app.config.CONFIG_FILE", fake_cfg_file):
+        fake_legacy = Path(tmpdir) / "legacy.json"
+        with patch("app.config.CONFIG_FILE", fake_cfg_file), patch("app.config.LEGACY_CONFIG_FILE", fake_legacy):
             cm = ConfigManager()
             cm.set("whisper_model", "large-v3")
             cm.set("ollama_model", "llama3:8b")

@@ -62,8 +62,10 @@ class AudioRecorder(QObject):
 
         audio_format = "wasapi" if sys.platform == "win32" else "pulse"
 
+        filter_chain = "aresample=16000,aformat=channel_layouts=mono,dynaudnorm=f=150:g=15:m=20.0:r=0.9:b=1,alimiter=limit=0.95"
+
         if monitor and mic:
-            # Both available: mix 2 inputs
+            # Both available: mix 2 inputs with dynamic loudness normalization
             cmd.extend([
                 "-thread_queue_size", "2048",
                 "-f", audio_format, "-i", monitor,
@@ -72,7 +74,8 @@ class AudioRecorder(QObject):
                 "-filter_complex",
                 "[0:a]aresample=16000,aformat=channel_layouts=mono[out];"
                 "[1:a]aresample=16000,aformat=channel_layouts=mono[mic];"
-                "[out][mic]amix=inputs=2:duration=longest:dropout_transition=2:normalize=0,alimiter=limit=0.95[mix]",
+                "[out][mic]amix=inputs=2:duration=longest:dropout_transition=2:normalize=0,"
+                "dynaudnorm=f=150:g=15:m=20.0:r=0.9:b=1,alimiter=limit=0.95[mix]",
                 "-map", "[mix]",
                 "-ac", "1",
                 "-ar", "16000",
@@ -84,7 +87,7 @@ class AudioRecorder(QObject):
             cmd.extend([
                 "-thread_queue_size", "2048",
                 "-f", audio_format, "-i", monitor,
-                "-af", "aresample=16000,aformat=channel_layouts=mono",
+                "-af", filter_chain,
                 "-ac", "1",
                 "-ar", "16000",
                 "-c:a", "pcm_s16le",
@@ -95,7 +98,7 @@ class AudioRecorder(QObject):
             cmd.extend([
                 "-thread_queue_size", "2048",
                 "-f", audio_format, "-i", mic,
-                "-af", "aresample=16000,aformat=channel_layouts=mono",
+                "-af", filter_chain,
                 "-ac", "1",
                 "-ar", "16000",
                 "-c:a", "pcm_s16le",

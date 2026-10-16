@@ -58,7 +58,7 @@ def detect_system_hardware() -> Dict[str, Any]:
     if has_cuda or has_rocm:
         profile_key = "gpu_balanced"
         profile_title = "GPU Accelerated"
-        rec_whisper = "small"
+        rec_whisper = "turbo"
         rec_ollama = "qwen2.5:7b"
         device_type = f"GPU ({gpu_name})"
         note = "Hardware acceleration active for fast transcription and AI summaries."

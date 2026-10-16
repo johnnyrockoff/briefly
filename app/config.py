@@ -87,7 +87,7 @@ DEFAULT_SYSTEM_PROMPT = PROMPTS_BY_LANGUAGE["pt"]
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "storage_dir": "",            # Custom storage location (empty = default ~/Documents/Briefly)
-    "whisper_model": "small",
+    "whisper_model": "turbo",
     "whisper_device": "cuda",
     "input_language": "auto",       # Spoken language: 'auto', 'pt', 'en', 'es', etc.
     "output_language": "pt",      # Summary output language: 'pt', 'en', 'es', etc.

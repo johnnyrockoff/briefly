@@ -194,3 +194,40 @@ def get_user_request_for_language(lang_code: str, filename: str, transcript: str
     """Returns localized user message payload sent to Ollama."""
     template = USER_PROMPTS_BY_LANGUAGE.get(lang_code, USER_PROMPTS_BY_LANGUAGE["pt"])
     return template.format(filename=filename, transcript=transcript)
+
+
+TRANSCRIPTION_PROMPTS: Dict[str, str] = {
+    "pt": (
+        "Reunião corporativa de alinhamento, desenvolvimento de software, deploy, "
+        "pull requests, sprint, bugs, pipeline, prazos e decisões. Pontuação clara e precisa."
+    ),
+    "en": (
+        "Corporate alignment meeting, software engineering, deployment, "
+        "pull requests, sprint backlog, pipeline, deliverables, deadlines, and decisions."
+    ),
+    "es": (
+        "Reunión corporativa de alineación, ingeniería, despliegue, "
+        "tareas, entregas, plazos y decisiones. Puntuación clara y precisa."
+    ),
+    "fr": (
+        "Réunion d'alignement d'entreprise, développement logiciel, déploiement, "
+        "tâches, livrables, délais et décisions. Ponctuation claire et précise."
+    ),
+    "de": (
+        "Unternehmensbesprechung, Softwareentwicklung, Bereitstellung, "
+        "Aufgaben, Meilensteine, Fristen und Beschlüsse. Klare Zeichensetzung."
+    ),
+    "it": (
+        "Riunione aziendale di allineamento, sviluppo software, rilascio, "
+        "attività, scadenze e decisioni. Punteggiatura chiara e precisa."
+    ),
+    "auto": (
+        "Meeting alignment, engineering, tasks, deliverables, deadlines, and decisions."
+    ),
+}
+
+
+def get_transcription_initial_prompt(lang_code: str) -> str:
+    """Returns an initial prompt for Whisper to guide punctuation and technical vocabulary."""
+    return TRANSCRIPTION_PROMPTS.get(lang_code, TRANSCRIPTION_PROMPTS["pt"])
+
